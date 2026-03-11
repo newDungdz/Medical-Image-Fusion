@@ -1,0 +1,11 @@
+All current metrics:
+AG, CC, EN, FMI, MI, MS_SSIM, MSE, NABF, PSNR, QABF, SCD, SD, SF, SSIM, VIF
+
+
+Poteintial wrong metrics:
+
+python =/= matlab: MI(small), Qabf(small), Nabf, FMI, MS_SSIM(small)
+python =/= matlab =/= reference: VIF
+python = matlab =/= reference: SD, SF
+
+Don't have ref: FMI, MS_SSIM
