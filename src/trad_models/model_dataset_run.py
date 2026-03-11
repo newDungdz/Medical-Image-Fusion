@@ -62,7 +62,16 @@ def process_image_pairs(root_folder, fuse_model, output_folder="FUSED"):
             print(f"Pair not found for: {img_name}")
     print(f"Finished processing. Fused images saved to: {fused_folder}")
 
+
 if __name__ == "__main__":
-    root_folder = "Havard-Medical-Image-Fusion-Datasets/PET-MRI"
+    root_folder = "data/AANLIB/dataset/CT-MRI/test"
+    process_image_pairs(root_folder, wavelet_fusion, "DWT")
+    process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")
+    
+    root_folder = "data/AANLIB/dataset/PET-MRI/test"
+    process_image_pairs(root_folder, wavelet_fusion, "DWT")
+    process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")
+    
+    root_folder = "data/AANLIB/dataset/SPECT-MRI/test"
     process_image_pairs(root_folder, wavelet_fusion, "DWT")
     process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")

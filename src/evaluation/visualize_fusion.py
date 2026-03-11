@@ -2,7 +2,7 @@ from pathlib import Path
 import random
 from PIL import Image
 
-root_folder = "Havard-Medical-Image-Fusion-Datasets/PET-MRI"
+root_folder = "data/AANLIB/SPECT-MRI"
 root_path = Path(root_folder)
     
 # Get subfolders

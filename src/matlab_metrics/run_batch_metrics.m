@@ -1,10 +1,13 @@
 clc;
 
-root_folder = 'Havard-Medical-Image-Fusion-Datasets/PET-MRI';
-
 easy_metric = true;
 hard_metric = false;
 
+run_evaluation('data/AANLIB/dataset/CT-MRI/test', easy_metric, hard_metric);
+run_evaluation('data/AANLIB/dataset/PET-MRI/test', easy_metric, hard_metric);
+run_evaluation('data/AANLIB/dataset/SPECT-MRI/test', easy_metric, hard_metric);
+
+function run_evaluation(root_folder, easy_metric, hard_metric)
 grey_level = 256;
 
 % ── Discover subfolders ───────────────────────────────────────────────────────
@@ -239,4 +242,5 @@ function avg_row = computeAverageRow(T, col_names, label)
         end
     end
     avg_row = cell2table(avg_cell, 'VariableNames', col_names);
+end
 end
