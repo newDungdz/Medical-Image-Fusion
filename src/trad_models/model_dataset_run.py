@@ -18,7 +18,7 @@ def fuse_images(img1_path, img2_path, fuse_model):
 
     return fused
 
-def process_image_pairs(root_folder, fuse_model, output_folder="FUSED"):
+def process_image_pairs(root_folder, fuse_model, output_folder_path, output_folder_name="FUSED"):
     """
     Process all pairs of images from two subfolders and save fused results.
     """
@@ -37,9 +37,8 @@ def process_image_pairs(root_folder, fuse_model, output_folder="FUSED"):
     folder1, folder2 = subfolders[0], subfolders[1]
     
     # Create FUSED output folder
-    fused_root = root_path / 'fused'
-    fused_root.mkdir(exist_ok=True)
-    fused_folder = fused_root / output_folder
+    output_folder_path.mkdir(exist_ok=True)
+    fused_folder = output_folder_path / output_folder_name
     fused_folder.mkdir(exist_ok=True)
     
     # Get image names from first folder
@@ -64,14 +63,17 @@ def process_image_pairs(root_folder, fuse_model, output_folder="FUSED"):
 
 
 if __name__ == "__main__":
-    root_folder = "data/AANLIB/dataset/CT-MRI/test"
-    process_image_pairs(root_folder, wavelet_fusion, "DWT")
-    process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")
+    root_output_folder = Path("data/Fused_results/CT-MRI")
+    root_folder = "data/AANLIB/MyDatasets/CT-MRI/test"
+    process_image_pairs(root_folder, wavelet_fusion, root_output_folder, "DWT")
+    process_image_pairs(root_folder, laplacian_fusion, root_output_folder, "PYRAMID")
     
-    root_folder = "data/AANLIB/dataset/PET-MRI/test"
-    process_image_pairs(root_folder, wavelet_fusion, "DWT")
-    process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")
+    root_output_folder = Path("data/Fused_results/PET-MRI")
+    root_folder = "data/AANLIB/MyDatasets/PET-MRI/test"
+    process_image_pairs(root_folder, wavelet_fusion, root_output_folder, "DWT")
+    process_image_pairs(root_folder, laplacian_fusion, root_output_folder, "PYRAMID")
     
-    root_folder = "data/AANLIB/dataset/SPECT-MRI/test"
-    process_image_pairs(root_folder, wavelet_fusion, "DWT")
-    process_image_pairs(root_folder, laplacian_fusion, "PYRAMID")
+    root_output_folder = Path("data/Fused_results/SPECT-MRI")
+    root_folder = "data/AANLIB/MyDatasets/SPECT-MRI/test"
+    process_image_pairs(root_folder, wavelet_fusion, root_output_folder, "DWT")
+    process_image_pairs(root_folder, laplacian_fusion, root_output_folder, "PYRAMID")

@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function outval = AG_metrics(img) 
 % OUTVAL = AVG_GRADIENT(IMG) 
  

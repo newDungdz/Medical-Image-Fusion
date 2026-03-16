@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function SF = SF_metrics(MF)
 RF = diff(MF,1,1);
 RF1 = sqrt(mean(mean(RF.^2)));

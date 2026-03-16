@@ -1,4 +1,6 @@
-function [oQ, Q, qMap] = MS_SSIM_metrics(imgSeq, fI, K, window, level, weight)
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
+function [oQ, Q, qMap] = MEF_SSIM_metrics(imgSeq, fI, K, window, level, weight)
 % ========================================================================
 % Multi-exposure fused (MEF) image quality model Version 1.0
 % Copyright(c) 2015 Kede Ma, Kai Zeng and Zhou Wang

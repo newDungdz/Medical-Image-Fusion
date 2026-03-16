@@ -8,7 +8,7 @@ root_path = Path(root_folder)
 # Get subfolders
 subfolders = [f for f in root_path.iterdir() if f.is_dir() and 'eval' not in f.name.lower()]
 
-fused_root_folder = root_path / "fused"
+fused_root_folder = Path("data/Fused_results/SCECT-MRI")
 
 print(f"Subfolders found: {[f.name for f in subfolders]}")
 fused_folders = [f for f in fused_root_folder.iterdir() if f.is_dir()]
@@ -27,7 +27,7 @@ fused_images = list(fused_folders[0].glob('*'))
 random_fused_images = random.sample(fused_images, min(num_images, len(fused_images)))
 
 # Display each fused image with its corresponding original images and all fused results
-fig, axes = plt.subplots(num_images, len(original_folders) + len(fused_folders), figsize=(15, 4 * num_images))
+fig, axes = plt.subplots(num_images, len(original_folders) + len(fused_folders), figsize=(12, 3 * num_images))
 
 for row, random_fused in enumerate(random_fused_images):
     # Get corresponding images from original folders
@@ -37,7 +37,7 @@ for row, random_fused in enumerate(random_fused_images):
             img = Image.open(img_path)
             axes[row, col].imshow(img, cmap='gray')
             if row == 0:  # Only set title on first row
-                axes[row, col].set_title(orig_folder.name)
+                axes[row, col].set_title(orig_folder.name, fontsize=12, fontweight='bold')
             axes[row, col].axis('off')
     
     # Add all fused images
@@ -47,8 +47,9 @@ for row, random_fused in enumerate(random_fused_images):
             fused_img = Image.open(fused_img_path)
             axes[row, len(original_folders) + col].imshow(fused_img, cmap='gray')
             if row == 0:  # Only set title on first row
-                axes[row, len(original_folders) + col].set_title(fused_folder.name)
+                axes[row, len(original_folders) + col].set_title(fused_folder.name, fontsize=12, fontweight='bold')
             axes[row, len(original_folders) + col].axis('off')
 
 plt.tight_layout()
 plt.show()
+

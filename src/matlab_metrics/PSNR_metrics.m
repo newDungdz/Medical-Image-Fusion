@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function PSNR = PSNR_metrics(A,B,F)
   A = A / 255.0;
   B = B /255.0;

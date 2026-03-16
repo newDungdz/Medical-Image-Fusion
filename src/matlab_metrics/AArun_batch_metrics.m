@@ -1,80 +1,65 @@
+current = fileparts(mfilename('src/matlab_metrics'));
+addpath(genpath(current))
+
 clc;
 
 easy_metric = true;
 hard_metric = false;
 
-run_evaluation('data/AANLIB/dataset/CT-MRI/test', easy_metric, hard_metric);
-run_evaluation('data/AANLIB/dataset/PET-MRI/test', easy_metric, hard_metric);
-run_evaluation('data/AANLIB/dataset/SPECT-MRI/test', easy_metric, hard_metric);
+run_evaluation('data/AANLIB/MyDatasets/CT-MRI/test', 'data/Fused_results/CT-MRI', 'data/Evaluation_results/CT-MRI', easy_metric, hard_metric);
+% run_evaluation('data/AANLIB/MyDatasets/PET-MRI/test', 'data/Fused_results/PET-MRI', 'data/Evaluation_results/PET-MRI', easy_metric, hard_metric);
+% run_evaluation('data/AANLIB/MyDatasets/SPECT-MRI/test', 'data/Fused_results/SPECT-MRI', 'data/Evaluation_results/SPECT-MRI', easy_metric, hard_metric);
 
-function run_evaluation(root_folder, easy_metric, hard_metric)
+
+function run_evaluation(root_folder, fused_root, output_folder, easy_metric, hard_metric)
+
 grey_level = 256;
 
-% ── Discover subfolders ───────────────────────────────────────────────────────
-% Expected structure:
-%   root_folder/
-%     <source1>/        first original image folder
-%     <source2>/        second original image folder
-%     eval_results/     output folder (created if missing)
-%     fused/            contains one subfolder per method
-%       DenseFuse/
-%       DWT/
-%       ...
+% ── Discover source image folders ─────────────────────────────────────────────
+% root_folder contains exactly 2 subfolders (the two source modalities)
+src_entries = dir(root_folder);
+src_entries = src_entries([src_entries.isdir] & ~startsWith({src_entries.name}, '.'));
 
-all_dirs = dir(root_folder);
-all_dirs = all_dirs([all_dirs.isdir] & ~startsWith({all_dirs.name}, '.'));
+assert(numel(src_entries) == 2, ...
+    'Expected exactly 2 source folders in "%s", found %d.', root_folder, numel(src_entries));
 
-src_dirs  = {};
-fused_root = '';
+% Build full paths so imread can locate files
+src_dirs = { fullfile(src_entries(1).folder, src_entries(1).name), ...
+             fullfile(src_entries(2).folder, src_entries(2).name) };
 
-RESERVED = {'fused', 'eval_results'};
+% ── Discover method subfolders inside fused root ───────────────────────────────
+fused_entries = dir(fused_root);
+fused_entries = fused_entries([fused_entries.isdir] & ~startsWith({fused_entries.name}, '.'));
 
-for k = 1:numel(all_dirs)
-    d = all_dirs(k);
-    if strcmpi(d.name, 'fused')
-        fused_root = fullfile(d.folder, d.name);
-    elseif ~any(strcmpi(d.name, RESERVED))
-        src_dirs{end+1} = fullfile(d.folder, d.name); %#ok<AGROW>
-    end
-end
-
-assert(numel(src_dirs) == 2, ...
-    'Expected exactly 2 source folders, found %d.', numel(src_dirs));
-assert(~isempty(fused_root), 'No "fused" subfolder found in root.');
-
-% Discover method subfolders inside fused/
-fused_subdirs = dir(fused_root);
-fused_subdirs = fused_subdirs([fused_subdirs.isdir] & ~startsWith({fused_subdirs.name}, '.'));
-
-assert(~isempty(fused_subdirs), 'No method folders found inside "%s".', fused_root);
+assert(~isempty(fused_entries), 'No method folders found inside "%s".', fused_root);
 
 fprintf('Source 1   : %s\n', src_dirs{1});
 fprintf('Source 2   : %s\n', src_dirs{2});
 fprintf('Fused root : %s\n', fused_root);
-for f = 1:numel(fused_subdirs)
-    fprintf('  Method %d : %s\n', f, fused_subdirs(f).name);
+for f = 1:numel(fused_entries)
+    fprintf('  Method %d : %s\n', f, fused_entries(f).name);
 end
 
-% ── Output directory ─────────────────────────────────────────────────────────
-out_dir = fullfile(root_folder, 'eval_results');
+% ── Output directory ──────────────────────────────────────────────────────────
+out_dir = fullfile(output_folder);
 if ~exist(out_dir, 'dir'), mkdir(out_dir); end
 
 % ── Supported image extensions ────────────────────────────────────────────────
 IMG_EXT = {'*.png','*.jpg','*.jpeg','*.bmp','*.tif','*.tiff'};
 
 % ── Column definitions ───────────────────────────────────────────────────────
-easy_cols         = {'ImageName','EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf'};
-hard_cols         = {'ImageName','NABF','SSIM','MS_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
-summary_easy_cols = {'Model',    'EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf'};
-summary_hard_cols = {'Model',    'NABF','SSIM','MS_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
+easy_cols         = {'ImageName','EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf', 'Qcv', 'Qcb', 'Qw', 'Qe'};
+hard_cols         = {'ImageName','NABF','SSIM','MEF_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
+summary_easy_cols = {'Model',    'EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf', 'Qcv', 'Qcb', 'Qw', 'Qe'};
+summary_hard_cols = {'Model',    'NABF','SSIM','MEF_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
 
 % ── Summary accumulators (one row per method) ─────────────────────────────────
 summary_easy = {};
 summary_hard = {};
 
 % ── Process each method folder ────────────────────────────────────────────────
-for fi = 1:numel(fused_subdirs)
-    method_name = fused_subdirs(fi).name;
+for fi = 1:numel(fused_entries)
+    method_name = fused_entries(fi).name;
     fused_dir   = fullfile(fused_root, method_name);
 
     fprintf('\n==============================\n');
@@ -142,8 +127,12 @@ for fi = 1:numel(fused_subdirs)
                 CC   = CC_metrics(img1_float, img2_float, img_f_float);
                 SCD  = SCD_metrics(img1_float, img2_float, img_f_float);
                 Qabf = QABF_metrics(img1_float, img2_float, img_f_float);
+                Qcv   = QCV_metrics(img1_float, img2_float, img_f_float);
+                Qcb   = QCB_metrics(img1_float, img2_float, img_f_float);
+                Qw = Peilla_metrics(img1_float, img2_float, img_f_float, 1);
+                Qe = Peilla_metrics(img1_float, img2_float, img_f_float, 2);
 
-                easy_data(end+1,:) = {img_name, EN, MI, PSNR, MSE, SF, SD, VIF, AG, CC, SCD, Qabf}; %#ok<AGROW>
+                easy_data(end+1,:) = {img_name, EN, MI, PSNR, MSE, SF, SD, VIF, AG, CC, SCD, Qabf, Qcv, Qcb, Qw, Qe}; %#ok<AGROW>
             catch e_easy
                 warning('\nEasy metrics failed for %s: %s', img_name, e_easy.message);
             end
@@ -154,13 +143,13 @@ for fi = 1:numel(fused_subdirs)
             try
                 NABF      = NABF_metrics(img1_float, img2_float, img_f_float);
                 SSIM      = SSIM_metrics(img1_float, img2_float, img_f_float);
-                [MS_SSIM, ~, ~] = MS_SSIM_metrics(imgSeq, img_f_float);
+                [MEF_SSIM, ~, ~] = MEF_SSIM_metrics(imgSeq, img_f_float);
                 FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
                 FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
                 FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
                 FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
 
-                hard_data(end+1,:) = {img_name, NABF, SSIM, MS_SSIM, FMI_pixel, FMI_dct, FMI_w, FMI_edge}; %#ok<AGROW>
+                hard_data(end+1,:) = {img_name, NABF, SSIM, MEF_SSIM, FMI_pixel, FMI_dct, FMI_w, FMI_edge}; %#ok<AGROW>
             catch e_hard
                 warning('\nHard metrics failed for %s: %s', img_name, e_hard.message);
             end
@@ -202,7 +191,7 @@ for fi = 1:numel(fused_subdirs)
 end % method loop
 
 % ── Write summary CSVs (only when multiple methods exist) ─────────────────────
-if numel(fused_subdirs) > 1
+if numel(fused_entries) > 1
     if easy_metric && ~isempty(summary_easy)
         T_sum_easy = cell2table(summary_easy, 'VariableNames', summary_easy_cols);
         writetable(T_sum_easy, fullfile(out_dir, 'summary_easy_metrics.csv'));
@@ -218,6 +207,8 @@ end
 
 fprintf('\nAll done. Results in: %s\n', out_dir);
 
+end % run_evaluation
+
 
 % ═════════════════════════════════════════════════════════════════════════════
 %  Helper functions
@@ -230,7 +221,6 @@ function img = ensureGray(img)
 end
 
 function avg_row = computeAverageRow(T, col_names, label)
-% Returns a 1-row table with column averages; first column gets label string.
     avg_cell    = cell(1, numel(col_names));
     avg_cell{1} = label;
     for c = 2:numel(col_names)
@@ -242,5 +232,4 @@ function avg_row = computeAverageRow(T, col_names, label)
         end
     end
     avg_row = cell2table(avg_cell, 'VariableNames', col_names);
-end
 end

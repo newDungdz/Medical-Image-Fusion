@@ -1,4 +1,6 @@
-function [NABF]=NABF_metrics(f,I1,I2)
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
+function [LABF, NABF]=NABF_metrics(f,I1,I2)
 % function [QABF,LABF,NABF,NABF1]=objective_fusion_perform_fn(f,I1,I2)
 % 
 %%% objective_fusion_perform_fn: Computes the Objective Fusion Performance Parameters proposed by Petrovic

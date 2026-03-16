@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function ent = EN_metrics(image)
     % Calculate entropy of a single image
     % Input: image - grayscale or color image

@@ -1,14 +1,17 @@
-clc
-clear all
-easy = 1;
+current = fileparts(mfilename('src'));
+addpath(genpath(current))
+
+clc;
+
+easy = 2;
 
 % img1 = imread('test_sample/mri-ct/mri.png');
 % img2 = imread('test_sample/mri-ct/ct.png');
 % img_f = imread('test_sample/mri-ct/fused/fused_dwt.png');
 
-img1 = imread('test_sample/ir-vi/ir.png');
-img2 = imread('test_sample/ir-vi/vi.png');
-img_f = imread('test_sample/ir-vi/fused/DenseFuse.png');
+img1 = imread('data/AANLIB/MyDatasets/CT-MRI/test/CT/2004.png');
+img2 = imread('data/AANLIB/MyDatasets/CT-MRI/test/MRI/2004.png');
+img_f = imread('data/Fused_results/CT-MRI/DWT/2004.png');
 
 if size(img1, 3)>2
     img1 = rgb2gray(img1);
@@ -21,6 +24,7 @@ end
 if size(img_f, 3)>2
     img_f = rgb2gray(img_f);
 end
+fprintf('Before Conversion - Size: %d x %d | Min: %d | Max: %d | Class: %s\n', size(img_f, 1), size(img_f, 2), min(img_f(:)), max(img_f(:)), class(img_f))
 
 grey_level = 256;
 [s1,s2] = size(img1);
@@ -67,23 +71,35 @@ if easy ==1
     fprintf('CC: %f\n', CC);
     fprintf('SCD: %f\n', SCD);
     fprintf('Qabf: %f\n', Qabf);
-else
-    Nabf = NABF_metrics(img1_float, img2_float, img_f_float);
+else 
+if easy == 0
+    [LABF, Nabf] = NABF_metrics(img1_float, img2_float, img_f_float);
     % SSIM_a
     SSIM = SSIM_metrics(img1_float, img2_float, img_f_float);
-    %MS_SSIM
-    [MS_SSIM,t1,t2]= MS_SSIM_metrics(imgSeq, img_f_float);
+    %MEF_SSIM
+    [MEF_SSIM,t1,t2]= MEF_SSIM_metrics(imgSeq, img_f_float);
     %FMI
     FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
     FMI_dct = FMI_metrics(img1_float, img2_float, img_f_float,'dct');
     FMI_w = FMI_metrics(img1_float, img2_float, img_f_float,'wavelet');
     FMI_edge = FMI_metrics(img1_float, img2_float, img_f_float,'edge');
+    fprintf('LABF: %f\n', LABF);
     fprintf('NABF: %f\n', Nabf);
     fprintf('SSIM: %f\n', SSIM);
-    fprintf('MS_SSIM: %f\n', MS_SSIM);
+    fprintf('MEF_SSIM: %f\n', MEF_SSIM);
     fprintf('FMI_pixel: %f\n', FMI_pixel);
     fprintf('FMI_dct: %f\n', FMI_dct);
     fprintf('FMI_w: %f\n', FMI_w);
     fprintf('FMI_edge: %f\n', FMI_edge);
+else
+    QCB = QCB_metrics(img1_float, img2_float, img_f_float);
+    QCV = QCV_metrics(img1_float, img2_float, img_f_float);
+    Qw = Peilla_metrics(img1_float, img2_float, img_f_float, 1);
+    Qe = Peilla_metrics(img1_float, img2_float, img_f_float, 2);
+    fprintf('QCB: %f\n', QCB);
+    fprintf('QCV: %f\n', QCV);
+    fprintf('Qw: %f\n', Qw);
+    fprintf('Qe: %f\n', Qe);
+end
 end
 

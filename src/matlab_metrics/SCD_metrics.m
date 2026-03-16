@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function r=SCD_metrics(img1,img2,fus)
 %% Emre Bende$ - ERU Computer Engineering - 2015
 % calculates image quality metric value based on THE SUM OF THE CORRELATIONS OF DIFFERENCES (SCD). 

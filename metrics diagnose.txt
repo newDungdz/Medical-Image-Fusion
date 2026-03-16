@@ -1,11 +1,33 @@
 All current metrics:
-AG, CC, EN, FMI, MI, MS_SSIM, MSE, NABF, PSNR, QABF, SCD, SD, SF, SSIM, VIF
+
+- Information Theory-Based Metrics: EN, OCE, TE, MI, FMI_pixel, FMI_dct, FMI_w, NCIE
+
+- Image Feature-Based Metrics: MSE, PSRN, EI, SF, rSFe (QSF), SD, AG, SCD, NABF, QABF, QP, CC
+
+- Image Structural Similarity-Based Metrics: SSIM, MS-SSIM, QS, QW, QE, QY, QC
+
+- Human Perception Inspired Metrics: VIF, VIFF, QCV, QCB
+
 
 
 Poteintial wrong metrics:
 
-python =/= matlab: MI(small), Qabf(small), Nabf, FMI, MS_SSIM(small)
+python =/= matlab: MI(small), Qabf(small), Nabf, , MS_SSIM(small)
 python =/= matlab =/= reference: VIF
 python = matlab =/= reference: SD, SF
 
-Don't have ref: FMI, MS_SSIM
+Can't/Haven't verify: VIF, Nabf, LABF, QCV, QCB , Qw, Qe, FMI_pixel, FMI_wavelet, FMI_edge,
+
+
+Chỉ số chính:
+Cường độ sáng trung bình của ảnh (Mean Intensity - MSE?)
+AG, SD, PSNR, SF
+
+Cho ví dụ 3x3 cho từng Metrics
+
+Không gian ảnh:
+HSI, YUV, YCbCr, Khôi phục lại màu ảnh tổng hợp
+
+Hàm đánh giá -> Chọn model phù hợp -> Tìm phân rã ảnh -> Metaheristic hỗ trợ nâng cao chất lượng ảnh.
+
+Các hàm 

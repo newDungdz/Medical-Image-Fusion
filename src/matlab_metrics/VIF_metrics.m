@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function vifp=VIF_metrics(ref,dist)
 % -----------COPYRIGHT NOTICE STARTS WITH THIS LINE------------
 % Copyright (c) 2005 The University of Texas at Austin
@@ -53,7 +55,7 @@ sigma_nsq=2;
 num=0;
 den=0;
 for scale=1:4
-   
+    
     N=2^(4-scale+1)+1;
     win=fspecial('gaussian',N,N/5);
     

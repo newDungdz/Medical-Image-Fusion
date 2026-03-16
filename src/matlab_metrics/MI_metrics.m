@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function mutural_informationR=MI_metrics(grey_matrixA,grey_matrixB,grey_matrixF,grey_level)
 % mutural_informationR=mutural_information(grey_matrixA,grey_matrixB,grey_matrixF,grey_level)
 % compute mutural information of the image

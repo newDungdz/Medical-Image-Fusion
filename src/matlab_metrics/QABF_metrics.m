@@ -1,3 +1,4 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
 
 %    Objective Image Fusion Performance Measure
 %    C.S.Xydeas and V.Petrovic

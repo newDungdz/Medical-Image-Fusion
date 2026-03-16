@@ -1,3 +1,5 @@
+% Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
+
 function nfmi = FMI_metrics(ima, imb, imf, feature, w)
 
 % FMI calculates the Feature Mutual Information (FMI), the non-reference 
