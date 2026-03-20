@@ -2,7 +2,7 @@ All current metrics:
 
 - Information Theory-Based Metrics: EN, OCE, TE, MI, FMI_pixel, FMI_dct, FMI_w, NCIE
 
-- Image Feature-Based Metrics: MSE, PSRN, EI, SF, rSFe (QSF), SD, AG, SCD, NABF, QABF, QP, CC
+- Image Feature-Based Metrics: Mean Intensity, MSE, PSRN, EI, SF, rSFe (QSF), SD, AG, SCD, NABF, QABF, QP, CC
 
 - Image Structural Similarity-Based Metrics: SSIM, MS-SSIM, QS, QW, QE, QY, QC
 

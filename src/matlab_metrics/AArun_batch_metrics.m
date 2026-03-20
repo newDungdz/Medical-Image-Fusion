@@ -15,6 +15,9 @@ function run_evaluation(root_folder, fused_root, output_folder, easy_metric, har
 
 grey_level = 256;
 
+% parameter for Tsallis entropy (TE) metric
+te_q = 1.5; % q != 1
+
 % ── Discover source image folders ─────────────────────────────────────────────
 % root_folder contains exactly 2 subfolders (the two source modalities)
 src_entries = dir(root_folder);
@@ -48,9 +51,11 @@ if ~exist(out_dir, 'dir'), mkdir(out_dir); end
 IMG_EXT = {'*.png','*.jpg','*.jpeg','*.bmp','*.tif','*.tiff'};
 
 % ── Column definitions ───────────────────────────────────────────────────────
-easy_cols         = {'ImageName','EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf', 'Qcv', 'Qcb', 'Qw', 'Qe'};
+% NOTE: Some metrics are computed even when not all are written out below. Ensure
+% these match the values stored in the per-image/result tables.
+easy_cols         = {'ImageName','EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','EI','NCIE','OCE','SCD','Qabf','Qcv','Qcb','Qw','Qe','QC1','QC2','QP','QY','TE','rSFe','VIFF'};
 hard_cols         = {'ImageName','NABF','SSIM','MEF_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
-summary_easy_cols = {'Model',    'EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','SCD','Qabf', 'Qcv', 'Qcb', 'Qw', 'Qe'};
+summary_easy_cols = {'Model',    'EN','MI','PSNR','MSE','SF','SD','VIF','AG','CC','EI','NCIE','OCE','SCD','Qabf','Qcv','Qcb','Qw','Qe','QC1','QC2','QP','QY','TE','rSFe','VIFF'};
 summary_hard_cols = {'Model',    'NABF','SSIM','MEF_SSIM','FMI_pixel','FMI_dct','FMI_wavelet','FMI_edge'};
 
 % ── Summary accumulators (one row per method) ─────────────────────────────────
@@ -116,15 +121,18 @@ for fi = 1:numel(fused_entries)
         % ── Easy metrics ──────────────────────────────────────────────────
         if easy_metric
             try
+                AG   = AG_metrics(img_f_float);
+                CC   = CC_metrics(img1_float, img2_float, img_f_float);
+                EI   = EI_metrics(img_f_float);
                 EN   = EN_metrics(img_f_int);
                 MI   = MI_metrics(img1_int, img2_int, img_f_int, grey_level);
-                PSNR = PSNR_metrics(img1_float, img2_float, img_f_float);
                 MSE  = MSE_metrics(img1_float, img2_float, img_f_float);
+                NCIE = NCIE_metrics(img1_float, img2_float, img_f_float);
+                OCE  = OCE_metrics(img1_float, img2_float, img_f_float);
+                PSNR = PSNR_metrics(img1_float, img2_float, img_f_float);
                 SF   = SF_metrics(img_f_float);
                 SD   = SD_metrics(img_f_float);
                 VIF  = VIF_metrics(img1_float, img_f_float) + VIF_metrics(img2_float, img_f_float);
-                AG   = AG_metrics(img_f_float);
-                CC   = CC_metrics(img1_float, img2_float, img_f_float);
                 SCD  = SCD_metrics(img1_float, img2_float, img_f_float);
                 Qabf = QABF_metrics(img1_float, img2_float, img_f_float);
                 Qcv   = QCV_metrics(img1_float, img2_float, img_f_float);
@@ -132,7 +140,16 @@ for fi = 1:numel(fused_entries)
                 Qw = Peilla_metrics(img1_float, img2_float, img_f_float, 1);
                 Qe = Peilla_metrics(img1_float, img2_float, img_f_float, 2);
 
-                easy_data(end+1,:) = {img_name, EN, MI, PSNR, MSE, SF, SD, VIF, AG, CC, SCD, Qabf, Qcv, Qcb, Qw, Qe}; %#ok<AGROW>
+                % Additional metrics (not previously included in output)
+                QC1  = QC_metrics(img1_float, img2_float, img_f_float, 1);
+                QC2  = QC_metrics(img1_float, img2_float, img_f_float, 2);
+                QP   = QP_metrics(img1_float, img2_float, img_f_float);
+                QY   = QY_metrics(img1_float, img2_float, img_f_float);
+                TE   = TE_metrics(img1_int, img2_int, te_q);
+                rSFe = rSFe_metrics(img1_float, img2_float, img_f_float);
+                VIFF = VIFF_metrics(img1_float, img2_float, img_f_float);
+
+                easy_data(end+1,:) = {img_name, EN, MI, PSNR, MSE, SF, SD, VIF, AG, CC, EI, NCIE, OCE, SCD, Qabf, Qcv, Qcb, Qw, Qe, QC1, QC2, QP, QY, TE, rSFe, VIFF}; %#ok<AGROW>
             catch e_easy
                 warning('\nEasy metrics failed for %s: %s', img_name, e_easy.message);
             end
@@ -141,7 +158,7 @@ for fi = 1:numel(fused_entries)
         % ── Hard metrics ──────────────────────────────────────────────────
         if hard_metric
             try
-                NABF      = NABF_metrics(img1_float, img2_float, img_f_float);
+                [LABF, NABF]      = Petrovic_metrics(img1_float, img2_float, img_f_float);
                 SSIM      = SSIM_metrics(img1_float, img2_float, img_f_float);
                 [MEF_SSIM, ~, ~] = MEF_SSIM_metrics(imgSeq, img_f_float);
                 FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
@@ -149,7 +166,7 @@ for fi = 1:numel(fused_entries)
                 FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
                 FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
 
-                hard_data(end+1,:) = {img_name, NABF, SSIM, MEF_SSIM, FMI_pixel, FMI_dct, FMI_w, FMI_edge}; %#ok<AGROW>
+                hard_data(end+1,:) = {img_name, LABF, NABF, SSIM, MEF_SSIM, FMI_pixel, FMI_dct, FMI_w, FMI_edge}; %#ok<AGROW>
             catch e_hard
                 warning('\nHard metrics failed for %s: %s', img_name, e_hard.message);
             end

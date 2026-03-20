@@ -1,0 +1,22 @@
+All current metrics:
+
+- Information Theory-Based Metrics: EN, OCE, TE, MI, NMI, FMI_pixel, FMI_dct, FMI_w, NCIE
+
+- Image Feature-Based Metrics: , rSFe (QSF), SCD, NABF, QABF, QP, CC
+
+- Image Structural Similarity-Based Metrics: SSIM, MS-SSIM, QS, QW, QE, QY, QC
+
+- Human Perception Inspired Metrics: VIF, VIFF, QCV, QCB
+
+
+Weird Results: Qc, Qy, QTE(Chưa)
+
+Verify with 3x3 matrix:
+
+Easy Metrics: AI, MSE, PSRN, EI, SF, SD, AG, NCIE
+
+Verified: EN, MI, NMI, OCE
+        MSE, PSRN, CC, SCD, rSFe
+
+
+Can't verify well: QTE(Payed Source Papers)
