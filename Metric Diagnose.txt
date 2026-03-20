@@ -9,7 +9,7 @@ All current metrics:
 - Human Perception Inspired Metrics: VIF, VIFF, QCV, QCB
 
 
-Weird Results: Qc, Qy, QTE(Chưa)
+Weird Results: Qc(Nan), Qy(Nan), Qcv(Big)
 
 Verify with 3x3 matrix:
 

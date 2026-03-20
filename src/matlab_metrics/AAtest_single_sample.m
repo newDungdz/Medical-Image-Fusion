@@ -2,24 +2,24 @@ current = fileparts(mfilename('fullpath'));
 addpath(genpath(current))
 clc;
 
-img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png');
-img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png');
-img_f = imread('data/ASFE-Fusion-result/SPECT-MRI/3015.png');
+% img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png');
+% img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png');
+% img_f = imread('data/ASFE-Fusion-result/SPECT-MRI/3015.png');
 
 % ========================
 % TEST MATRIX 3x3
 % ========================
-% img1 = uint8([80  20  85;
-%               75  25  78;
-%               80  22  88]);
+img1 = uint8([80  20  85;
+              75  25  78;
+              80  22  88]);
 
-% img2 = uint8([30 110  35;
-%               28 120  32;
-%               26 115  30]);
+img2 = uint8([30 110  35;
+              28 120  32;
+              26 115  30]);
 
-% img_f = uint8([58  70  60;
-%                55  78  57;
-%                62  75  61]);
+img_f = uint8([58  70  60;
+               55  78  57;
+               62  75  61]);
 
 % ========================
 % PREPROCESS
