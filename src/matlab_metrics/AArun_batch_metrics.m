@@ -1,14 +1,4 @@
-current = fileparts(mfilename('fullpath')); 
-addpath(genpath(current))
-
-clc;
-
-% run_evaluation('data/AANLIB/MyDatasets/CT-MRI/test', 'data/Fused_results/CT-MRI', 'data/Evaluation_results/CT-MRI');
-run_evaluation('data/AANLIB/MyDatasets/PET-MRI/test', 'data/Fused_results/PET-MRI', 'data/Evaluation_results/PET-MRI');
-run_evaluation('data/AANLIB/MyDatasets/SPECT-MRI/test', 'data/Fused_results/SPECT-MRI', 'data/Evaluation_results/SPECT-MRI');
-
-
-function run_evaluation(root_folder, fused_root, output_folder)
+function AArun_batch_metrics(root_folder, fused_root, output_folder)
 
 grey_level = 256;
 
