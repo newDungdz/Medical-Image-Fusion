@@ -2,15 +2,16 @@ name: Test MATLAB Action
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write   # 🔥 REQUIRED
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v2
@@ -21,27 +22,21 @@ jobs:
         uses: matlab-actions/run-command@v2
         with:
           command: |
-            disp("MATLAB is running on GitHub!");
-
-            % Create output folder
             if ~exist('output', 'dir')
                 mkdir('output');
             end
 
-            % Create dummy data
             A = uint8(rand(100,100) * 255);
-
-            % Save image
             imwrite(A, 'output/test.png');
 
-            % Save CSV
-            T = table(mean(A(:)), std(double(A(:))));
+            T = table(mean(A(:)));
             writetable(T, 'output/test.csv');
 
-            disp("Files saved!");
+      - name: Commit results
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: output/
+          git add output/*
+          git commit -m "Auto: add results" || echo "No changes"
+          git push

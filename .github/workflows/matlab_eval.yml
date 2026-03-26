@@ -1,10 +1,10 @@
 name: MATLAB Evaluation
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
   workflow_dispatch:        # allows manual trigger from GitHub UI
 
 jobs:
@@ -39,3 +39,10 @@ jobs:
           name: evaluation-results
           path: data/Evaluation_results/
           retention-days: 30
+      - name: Commit results back to repo
+        run: |
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/Evaluation_results/
+            git commit -m "ci: add evaluation results [skip ci]"
+            git push
