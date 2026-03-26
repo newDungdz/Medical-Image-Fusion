@@ -14,7 +14,6 @@ w = fspecial('sobel');
 % ����3*3��Sobel(һ�ֱ�Ե����˲���)������ȡͼ���Ե��������ͳ��
 gx = imfilter(img,w,'replicate'); 
 gy = imfilter(img,w','replicate'); 
-
 for i = 1:M
     for j = 1:N
         g(i,j) = sqrt(gx(i,j)*gx(i,j) + gy(i,j)*gy(i,j));

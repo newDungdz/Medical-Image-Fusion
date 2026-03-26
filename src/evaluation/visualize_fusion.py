@@ -2,13 +2,13 @@ from pathlib import Path
 import random
 from PIL import Image
 
-root_folder = "data/AANLIB/SPECT-MRI"
+root_folder = "data/AANLIB/PET-MRI"
 root_path = Path(root_folder)
     
 # Get subfolders
 subfolders = [f for f in root_path.iterdir() if f.is_dir() and 'eval' not in f.name.lower()]
 
-fused_root_folder = Path("data/Fused_results/SCECT-MRI")
+fused_root_folder = Path("data/Fused_results/PET-MRI")
 
 print(f"Subfolders found: {[f.name for f in subfolders]}")
 fused_folders = [f for f in fused_root_folder.iterdir() if f.is_dir()]
@@ -20,7 +20,7 @@ print(f"Original folders: {[f.name for f in original_folders]}")
 import matplotlib.pyplot as plt
 
 # Number of random images to display
-num_images = 4
+num_images = 2
 
 # Get random fused images from first fused folder
 fused_images = list(fused_folders[0].glob('*'))

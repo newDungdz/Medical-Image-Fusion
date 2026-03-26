@@ -1,6 +1,6 @@
 % Reference from https://github.com/Linfeng-Tang/Image-Fusion General Metrics
 
-function [QABF, LABF, NABF]=Petrovic_metrics(f,I1,I2)
+function [QABF, LABF, NABF, NABF1]=Petrovic_metrics(f,I1,I2)
 % function [QABF,LABF,NABF,NABF1]=objective_fusion_perform_fn(f,I1,I2)
 % 
 %%% objective_fusion_perform_fn: Computes the Objective Fusion Performance Parameters proposed by Petrovic
@@ -50,7 +50,6 @@ gB=sqrt(ghB.^2+gvB.^2);
 
 [gvF,ghF]=sobel_fn(xrcw);
 gF=sqrt(ghF.^2+gvF.^2);
-
 %%% Relative Edge Strength & Orientation.
 [p,q]=size(xrcw);
 for ii=1:p

@@ -9,19 +9,17 @@ All current metrics:
 - Human Perception Inspired Metrics: VIF, VIFF, QCV, QCB
 
 
+Learn Metrics: Important metrics
 
-Poteintial wrong metrics:
+INFO: EN, MI, FMI, SCD
+IMAGE: Qabf, SF (2 Chiều), 
+STRUCTURE: SSIM, MS-SSIM
+VISUAL: VIF, VIFF
+Quality: SD, MLI, AG, PSNR
 
-python =/= matlab: MI(small), Qabf(small), Nabf, , MS_SSIM(small)
-python =/= matlab =/= reference: VIF
-python = matlab =/= reference: SD, SF
-
-Can't/Haven't verify: VIF, Nabf, LABF, QCV, QCB , Qw, Qe, FMI_pixel, FMI_wavelet, FMI_edge,
-
-
-Chỉ số chính:
 Cường độ sáng trung bình của ảnh (Mean Intensity - MSE?)
 AG, SD, PSNR, SF
+
 
 Cho ví dụ 3x3 cho từng Metrics
 
