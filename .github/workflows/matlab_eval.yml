@@ -1,0 +1,41 @@
+name: MATLAB Evaluation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:        # allows manual trigger from GitHub UI
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest  # or windows-latest / macos-latest
+
+    steps:
+      # ── 1. Checkout repo ───────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up MATLAB with required toolboxes ───────────────────────────
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+        with:
+          release: R2024a          # pin to a specific release
+          products: >
+            Image_Processing_Toolbox
+            Wavelet_Toolbox
+
+      # ── 3. Run the evaluation script ───────────────────────────────────────
+      - name: Run evaluation
+        uses: matlab-actions/run-command@v2
+        with:
+          command: run('run_main.m')
+
+      # ── 4. Upload CSV results as artifacts ─────────────────────────────────
+      - name: Upload evaluation results
+        uses: actions/upload-artifact@v4
+        if: always()              # upload even if the step above failed
+        with:
+          name: evaluation-results
+          path: data/Evaluation_results/
+          retention-days: 30
