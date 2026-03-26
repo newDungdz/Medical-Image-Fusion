@@ -29,7 +29,7 @@ jobs:
       - name: Run evaluation
         uses: matlab-actions/run-command@v2
         with:
-          command: run('run_main.m')
+          command: run('src/matlab_metrics/AArun_batch_metrics.m')
 
       # ── 4. Upload CSV results as artifacts ─────────────────────────────────
       - name: Upload evaluation results

@@ -1,4 +1,4 @@
-current = fileparts(mfilename('src/matlab_metrics'));
+current = fileparts(mfilename('fullpath')); 
 addpath(genpath(current))
 
 clc;
