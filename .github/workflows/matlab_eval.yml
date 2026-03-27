@@ -10,6 +10,9 @@ on:
 jobs:
   evaluate:
     runs-on: ubuntu-latest  # or windows-latest / macos-latest
+    
+    permissions:
+          contents: write   # 🔥 REQUIRED
 
     steps:
       # ── 1. Checkout repo ───────────────────────────────────────────────────
