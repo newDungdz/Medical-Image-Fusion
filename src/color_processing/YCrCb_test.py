@@ -175,7 +175,7 @@ def visualize_ycbcr(img_rgb: np.ndarray,
     ], axis=-1)
     # ── Layout ────────────────────────────────────────────────────────
     fig = plt.figure(figsize=(15, 10), facecolor="#0f0f0f")
-    gs  = gridspec.GridSpec(3, 3, figure=fig,
+    gs  = gridspec.GridSpec(2, 3, figure=fig,
                             hspace=0.40, wspace=0.20,
                             left=0.04, right=0.96, top=0.91, bottom=0.04)
 
@@ -195,8 +195,8 @@ def visualize_ycbcr(img_rgb: np.ndarray,
 
     # Row 0 — original & reconstruction
     _show(fig.add_subplot(gs[0, 0]), img_rgb,      "Original (RGB)",              label="input")
-    _show(fig.add_subplot(gs[0, 1]), ycbcr_vis,    "YCbCr Channels (Y=R, Cb=G, Cr=B)", label="sanity check")
-    _show(fig.add_subplot(gs[0, 2]), ycbcr_recon,  "Reconstructed (YCbCr→RGB)",   label="sanity check")
+    # _show(fig.add_subplot(gs[0, 1]), ycbcr_vis,    "YCbCr Channels (Y=R, Cb=G, Cr=B)", label="sanity check")
+    # _show(fig.add_subplot(gs[0, 2]), ycbcr_recon,  "Reconstructed (YCbCr→RGB)",   label="sanity check")
 
     # Row 1 — individual channels
     _show(fig.add_subplot(gs[1, 0]), Y_ch,  "Y — Luma",       cmap="gray",    vmin=0, vmax=255, label="0 → 255")
@@ -204,14 +204,12 @@ def visualize_ycbcr(img_rgb: np.ndarray,
     _show(fig.add_subplot(gs[1, 2]), Cr_ch, "Cr — Red diff",  cmap="Reds",    vmin=0, vmax=255, label="0 → 255")
 
     # Row 2 — chroma composite
-    _show(fig.add_subplot(gs[2, 0]), chroma_vis, "Cb + Cr  (Chroma map)", label="blue-shift ↔ red-shift")
-    _blank(fig.add_subplot(gs[2, 1]))
-    _blank(fig.add_subplot(gs[2, 2]))
+    _show(fig.add_subplot(gs[0, 2]), chroma_vis, "Cb + Cr  (Chroma map)", label="blue-shift ↔ red-shift")
 
-    # Section labels
-    fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.645, "YCbCr CHANNELS",             color="#f7b731", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.330, "YCbCr COMPOSITES",            color="#f7b731", fontsize=9, fontweight="bold")
+    # # Section labels
+    # fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.645, "YCbCr CHANNELS",             color="#f7b731", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.330, "YCbCr COMPOSITES",            color="#f7b731", fontsize=9, fontweight="bold")
 
     fig.suptitle("YCbCr Color Space — Luma · Blue-diff Chroma · Red-diff Chroma",
                  color="white", fontsize=15, fontweight="bold", y=0.985)

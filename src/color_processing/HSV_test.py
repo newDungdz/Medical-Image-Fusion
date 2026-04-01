@@ -204,7 +204,7 @@ def visualize_hsv(img_rgb: np.ndarray,
 
     # ── Layout ───────────────────────────────────────────────────────
     fig = plt.figure(figsize=(15, 10), facecolor="#0f0f0f")
-    gs  = gridspec.GridSpec(3, 3, figure=fig,
+    gs  = gridspec.GridSpec(2, 3, figure=fig,
                             hspace=0.40, wspace=0.20,
                             left=0.04, right=0.96, top=0.91, bottom=0.04)
 
@@ -224,25 +224,21 @@ def visualize_hsv(img_rgb: np.ndarray,
 
     # Row 0 — original & reconstruction
     _show(fig.add_subplot(gs[0, 0]), img_rgb,   "Original (RGB)",          label="input")
-    _blank(fig.add_subplot(gs[0, 1]))
-    _show(fig.add_subplot(gs[0, 2]), hsv_recon, "Reconstructed (HSV→RGB)", label="sanity check")
 
-    # Row 1 — individual channels
-    _show(fig.add_subplot(gs[1, 0]), H_vis, "H — Hue",        label="false-color (hsv cmap)")
-    _show(fig.add_subplot(gs[1, 1]), S_ch,  "S — Saturation", cmap="magma",   vmin=0, vmax=1,
+    _show(fig.add_subplot(gs[0, 1]), H_vis, "H — Hue",        label="false-color (hsv cmap)")
+    _show(fig.add_subplot(gs[0, 2]), S_ch,  "S — Saturation", cmap="magma",   vmin=0, vmax=1,
           label="0 → 1  (chroma / peak)")
-    _show(fig.add_subplot(gs[1, 2]), V_ch,  "V — Value",      cmap="gray",    vmin=0, vmax=1,
+    _show(fig.add_subplot(gs[1, 0]), V_ch,  "V — Value",      cmap="gray",    vmin=0, vmax=1,
           label="0 → 1  (max of channels)")
 
     # Row 2 — composite channels
-    _show(fig.add_subplot(gs[2, 0]), hs_vis, "H × S  (Chroma)",   label="hue weighted by saturation")
-    _show(fig.add_subplot(gs[2, 1]), sv_vis, "S × V  (Vivid V)",  label="saturation weighted by value")
-    _blank(fig.add_subplot(gs[2, 2]))
+    _show(fig.add_subplot(gs[1, 1]), hs_vis, "H × S  (Chroma)",   label="hue weighted by saturation")
+    _show(fig.add_subplot(gs[1, 2]), sv_vis, "S × V  (Vivid V)",  label="saturation weighted by value")
 
     # Section labels  (warm orange palette to distinguish from HSI teal)
-    fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.645, "HSV CHANNELS",               color="#f4a261", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.330, "HSV COMPOSITES",              color="#f4a261", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.645, "HSV CHANNELS",               color="#f4a261", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.330, "HSV COMPOSITES",              color="#f4a261", fontsize=9, fontweight="bold")
 
     fig.suptitle("HSV Color Space — Hue · Saturation · Value",
                  color="white", fontsize=15, fontweight="bold", y=0.985)

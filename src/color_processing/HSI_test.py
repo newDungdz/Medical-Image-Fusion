@@ -194,7 +194,7 @@ def visualize_hsi(img_rgb: np.ndarray,
 
     # ── Layout ────────────────────────────────────────────────────────
     fig = plt.figure(figsize=(15, 10), facecolor="#0f0f0f")
-    gs  = gridspec.GridSpec(3, 3, figure=fig,
+    gs  = gridspec.GridSpec(2, 3, figure=fig,
                             hspace=0.40, wspace=0.20,
                             left=0.04, right=0.96, top=0.91, bottom=0.04)
 
@@ -214,23 +214,19 @@ def visualize_hsi(img_rgb: np.ndarray,
 
     # Row 0 — original & reconstruction
     _show(fig.add_subplot(gs[0, 0]), img_rgb,   "Original (RGB)",         label="input")
-    _blank(fig.add_subplot(gs[0, 1]))
-    _show(fig.add_subplot(gs[0, 2]), hsi_recon, "Reconstructed (HSI→RGB)", label="sanity check")
 
-    # Row 1 — individual channels
-    _show(fig.add_subplot(gs[1, 0]), H_vis, "H — Hue",        label="false-color (hsv cmap)")
-    _show(fig.add_subplot(gs[1, 1]), S_ch,  "S — Saturation", cmap="magma", vmin=0, vmax=1, label="0 → 1")
-    _show(fig.add_subplot(gs[1, 2]), I_ch,  "I — Intensity",  cmap="gray",  vmin=0, vmax=1, label="0 → 1")
+    _show(fig.add_subplot(gs[0, 1]), H_vis, "H — Hue",        label="false-color (hsv cmap)")
+    _show(fig.add_subplot(gs[0, 2]), S_ch,  "S — Saturation", cmap="magma", vmin=0, vmax=1, label="0 → 1")
+    _show(fig.add_subplot(gs[1, 0]), I_ch,  "I — Intensity",  cmap="gray",  vmin=0, vmax=1, label="0 → 1")
 
     # Row 2 — composite channels
-    _show(fig.add_subplot(gs[2, 0]), hs_vis, "H × S  (Chroma)",    label="hue weighted by saturation")
-    _show(fig.add_subplot(gs[2, 1]), si_vis, "S × I  (Vivid I)",   label="saturation weighted by intensity")
-    _blank(fig.add_subplot(gs[2, 2]))
+    _show(fig.add_subplot(gs[1, 1]), hs_vis, "H × S  (Chroma)",    label="hue weighted by saturation")
+    _show(fig.add_subplot(gs[1, 2]), si_vis, "S × I  (Vivid I)",   label="saturation weighted by intensity")
 
     # Section labels
-    fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.645, "HSI CHANNELS",               color="#4ecdc4", fontsize=9, fontweight="bold")
-    fig.text(0.04, 0.330, "HSI COMPOSITES",              color="#4ecdc4", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.965, "ORIGINALS & RECONSTRUCTION", color="#888888", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.645, "HSI CHANNELS",               color="#4ecdc4", fontsize=9, fontweight="bold")
+    # fig.text(0.04, 0.330, "HSI COMPOSITES",              color="#4ecdc4", fontsize=9, fontweight="bold")
 
     fig.suptitle("HSI Color Space — Hue · Saturation · Intensity",
                  color="white", fontsize=15, fontweight="bold", y=0.985)
@@ -298,18 +294,16 @@ def hue_plane_visualize():
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    hue_plane_visualize()
+    image_path = "data/AANLIB/SPECT-MRI/SPECT/3015.png"
+    img        = load_image(image_path)
 
-    # image_path = "data/AANLIB/SPECT-MRI/SPECT/3015.png"
-    # img        = load_image(image_path)
+    print(f"Image shape : {img.shape}")
+    print(f"Image dtype : {img.dtype}")
 
-    # print(f"Image shape : {img.shape}")
-    # print(f"Image dtype : {img.dtype}")
+    visualize_hsi(img)
 
-    # visualize_hsi(img)
-
-    # H, S, I = rgb_to_hsi(img)
-    # print("\n── HSI Channel Statistics ──────────────────────────────")
-    # print(f"  H : min={np.degrees(H.min()):6.1f}°  max={np.degrees(H.max()):6.1f}°  mean={np.degrees(H.mean()):6.1f}°")
-    # print(f"  S : min={S.min():.3f}     max={S.max():.3f}     mean={S.mean():.3f}")
-    # print(f"  I : min={I.min():.3f}     max={I.max():.3f}     mean={I.mean():.3f}")
+    H, S, I = rgb_to_hsi(img)
+    print("\n── HSI Channel Statistics ──────────────────────────────")
+    print(f"  H : min={np.degrees(H.min()):6.1f}°  max={np.degrees(H.max()):6.1f}°  mean={np.degrees(H.mean()):6.1f}°")
+    print(f"  S : min={S.min():.3f}     max={S.max():.3f}     mean={S.mean():.3f}")
+    print(f"  I : min={I.min():.3f}     max={I.max():.3f}     mean={I.mean():.3f}")
