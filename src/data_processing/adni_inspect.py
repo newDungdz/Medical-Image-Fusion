@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 mri_data = pd.read_csv("data/ADNI/All_Subjects_Key_MRI_27Mar2026.csv")
 pet_data = pd.read_csv("data/ADNI/All_Subjects_Key_PET_27Mar2026.csv")
@@ -65,6 +67,8 @@ merged = merged[merged["visit_match"] == True]
 # Step 3: inspect key columns
 inspect_cols = [
     "subject_id",
+    "image_id_mri",
+    "image_id_pet",
     "image_visit_mri",
     "image_visit_pet",
     "visit_match",
@@ -73,10 +77,14 @@ inspect_cols = [
     "date_diff_days",
 ]
 
-optional_cols = [col for col in ["acquisition_plane", "tau_pet", "amyloid_pet", "radiopharmaceutical", "pet_description"] if col in merged.columns]
+optional_cols = [col for col in ["acquisition_plane", "series_description", "tau_pet", "amyloid_pet", "radiopharmaceutical", "pet_description"] if col in merged.columns]
+
+series_description_counts = merged["series_description"].value_counts()
+
 print(f"Matched rows: {len(merged)}")
-print(f"Acquisition plane distribution:\n{merged['acquisition_plane'].value_counts()}")
-print(f"PET description distribution:\n{merged['pet_description'].value_counts()}")
+# print(f"Acquisition plane distribution:\n{merged['acquisition_plane'].value_counts()}")
+# print(f"PET description distribution:\n{merged['pet_description'].value_counts()}")
+series_description_counts.to_json("series_description_counts.json", orient="index")
 merged = merged[inspect_cols + optional_cols]
 
 merged.to_csv("merged_mri_pet_by_date.csv", index=False)

@@ -1,0 +1,7 @@
+Learn Metrics: Important metrics
+
+INFO: EN, MI, FMI, SCD
+IMAGE: Qabf, SF (2 Chiều), 
+STRUCTURE: SSIM, MS-SSIM
+VISUAL: VIF, VIFF
+Quality: SD, MLI, AG, PSNR

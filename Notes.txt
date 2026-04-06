@@ -17,9 +17,6 @@ STRUCTURE: SSIM, MS-SSIM
 VISUAL: VIF, VIFF
 Quality: SD, MLI, AG, PSNR
 
-Cường độ sáng trung bình của ảnh (Mean Intensity - MSE?)
-AG, SD, PSNR, SF
-
 
 Cho ví dụ 3x3 cho từng Metrics
 
