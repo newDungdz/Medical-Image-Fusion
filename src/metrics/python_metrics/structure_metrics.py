@@ -7,8 +7,6 @@ from scipy.ndimage import sobel
 # ──────────────────────────────────────────────
 # Structural Similarity (SSIM)
 # ──────────────────────────────────────────────
-
-
 # ---------------------------------------------------------------------------
 # Gaussian kernel  (mirrors images.internal.createGaussianKernel)
 # ---------------------------------------------------------------------------
@@ -250,7 +248,7 @@ def ssim(A, ref,
         C = np.asarray(regularization_constants, dtype=float)
         if C.shape != (3,):
             raise ValueError("regularization_constants must have exactly 3 elements.")
-    print(C)
+    # print(C)
     # --- filter size (mirrors ssimParseInputs.m) ---
     filt_radius = int(np.ceil(radius * 3))   # 3 std-devs cover >99 % of area
     filt_size   = 2 * filt_radius + 1

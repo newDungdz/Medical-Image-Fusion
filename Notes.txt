@@ -27,4 +27,4 @@ Hàm đánh giá -> Chọn model phù hợp -> Tìm phân rã ảnh -> Metaheris
 
 
 Python =/= matlab:
-SCD(0.4), FMI_pixel(0.6), FMI_wavelet(0.01), FMI_edge(0.6), SSIM(0.1)
+FMI_pixel(0.6), FMI_wavelet(0.01), FMI_edge(0.6), SSIM(0.1), VIF(0.1)

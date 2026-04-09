@@ -9,6 +9,6 @@ function r=SCD_metrics(img1,img2,fus)
 % Please site:
 %	V. Aslantas and E. Bendes, 
 %	"A new image quality metric for image fusion: The sum of the correlations of differences," 
-%	AEU - International Journal of Electronics and Communications, vol. 69/12, pp. 1890-1896, 2015.
-        r=corr2(fus-img2,img1)+corr2(fus-img1,img2);
+%	AEU - International Journal of Electronics and Communications, vol. 69/12, pp. 1890-1896, 2015.       
+r=corr2(fus-img2,img1)+corr2(fus-img1,img2);
 end

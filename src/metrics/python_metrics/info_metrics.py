@@ -335,8 +335,39 @@ def fmi(
 def scd(A: np.ndarray, B: np.ndarray, F: np.ndarray) -> float:
     """Fusion quality via correlation of residual differences."""
     def _corr2(X, Y):
-        X, Y = X.astype(np.float64), Y.astype(np.float64)
         Xm, Ym = X - X.mean(), Y - Y.mean()
-        denom = np.sqrt((Xm ** 2).sum() * (Ym ** 2).sum())
+
+        denom = np.sqrt((Xm * Xm).sum() * (Ym * Ym).sum())
         return float((Xm * Ym).sum() / (denom + 1e-10))
+    A = A.astype(np.float64)
+    B = B.astype(np.float64)
+    F = F.astype(np.float64)
+    # print(_corr2(F - B, A), _corr2(F - A, B))
     return float(_corr2(F - B, A) + _corr2(F - A, B))
+
+if __name__ == "__main__":
+    import cv2
+    def load_gray(path):
+        return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
+    B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
+    F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
+    # A = np.array([
+    #     [80, 20, 85],
+    #     [75, 25, 78],
+    #     [80, 22, 88]
+    # ], dtype=np.uint8)
+
+    # B = np.array([
+    #     [30, 110, 35],
+    #     [28, 120, 32],
+    #     [26, 115, 30]
+    # ], dtype=np.uint8)
+
+    # F = np.array([
+    #     [58, 70, 60],
+    #     [55, 78, 57],
+    #     [62, 75, 61]
+    # ], dtype=np.uint8)
+
+    # print("SCD:", scd(A, B, F))

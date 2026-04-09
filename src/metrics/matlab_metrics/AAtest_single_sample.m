@@ -3,9 +3,9 @@ addpath(genpath(current))
 addpath(fullfile(current, 'VIF', 'VIF'))
 clc;
 
-img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png');
-img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png');
-img_f = imread('data/Fused_results/SPECT-MRI/ASFE-Fusion/3015.png');
+img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png');
+img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png');
+img_f = imread('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png');
 
 % % ========================
 % % TEST MATRIX 3x3
@@ -101,10 +101,10 @@ fprintf('Peak Signal-to-Noise Ratio (PSNR): %f\n', PSNR);
 fprintf('Entropy (EN): %f\n', EN);
 fprintf('Mutual Information (MI): %f\n', MI);
 
-FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
-FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
-FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
-FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
+% FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
+% FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
+% FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
+% FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
 
 % Keep only FMI variants that exist in your Python structure
 fprintf('Feature Mutual Information (FMI_pixel): %.6f\n', FMI_pixel);

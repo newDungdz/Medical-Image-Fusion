@@ -11,9 +11,9 @@ from visual_metrics import *
 
 def load_gray(path):
     return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png')
-B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png')
-F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/3015.png')
+A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
+B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
+F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
 
 # A = np.array([
 #     [80, 20, 85],
