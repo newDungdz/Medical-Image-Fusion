@@ -44,7 +44,7 @@ def mi(A: np.ndarray, B: np.ndarray, F: np.ndarray, grey_level: int = 256) -> fl
     return float(mifa + mifb)
 
 # ──────────────────────────────────────────────
-# ! FMI  –  Feature Mutual Information (Missing)
+# ! FMI  –  Feature Mutual Information 
 # ──────────────────────────────────────────────
 #region FMI  –  Feature Mutual Information
 
@@ -255,11 +255,11 @@ def _patch_mi(sub_x: np.ndarray, sub_y: np.ndarray) -> float:
  
  
 # Main function 
-def FMI_metrics(
+def fmi(
     ima: np.ndarray,
     imb: np.ndarray,
     imf: np.ndarray,
-    feature: str = "edge",
+    feature: str = "none",
     w: int = 3,
 ) -> float:
     """

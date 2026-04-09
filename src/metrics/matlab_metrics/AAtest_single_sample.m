@@ -1,25 +1,26 @@
 current = fileparts(mfilename('fullpath'));
 addpath(genpath(current))
+addpath(fullfile(current, 'VIF', 'VIF'))
 clc;
 
-% img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png');
-% img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png');
-% img_f = imread('data/ASFE-Fusion-result/SPECT-MRI/3015.png');
+img1 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png');
+img2 = imread('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png');
+img_f = imread('data/Fused_results/SPECT-MRI/ASFE-Fusion/3015.png');
 
-% ========================
-% TEST MATRIX 3x3
-% ========================
-img1 = uint8([80  20  85;
-              75  25  78;
-              80  22  88]);
+% % ========================
+% % TEST MATRIX 3x3
+% % ========================
+% img1 = uint8([80  20  85;
+%               75  25  78;
+%               80  22  88]);
 
-img2 = uint8([30 110  35;
-              28 120  32;
-              26 115  30]);
+% img2 = uint8([30 110  35;
+%               28 120  32;
+%               26 115  30]);
 
-img_f = uint8([58  70  60;
-               55  78  57;
-               62  75  61]);
+% img_f = uint8([58  70  60;
+%                55  78  57;
+%                62  75  61]);
 
 % ========================
 % TEST MATRIX 5x5
@@ -74,7 +75,7 @@ EN   = EN_metrics(img_f_int);
 OCE  = OCE_metrics(img1_float, img2_float, img_f_float);
 MI   = MI_metrics(img1_int, img2_int, img_f_int, grey_level, 0);
 NMI   = MI_metrics(img1_int, img2_int, img_f_int, grey_level, 1);
-[MLI_F, MLI_ref] = MLI_metrics(img1_float, img2_float, img_f_float);
+MLI_error = MLI_metrics(img1_float, img2_float, img_f_float);
 PSNR = PSNR_metrics(img1_float, img2_float, img_f_float);
 MSE  = MSE_metrics(img1_float, img2_float, img_f_float);
 SF   = SF_metrics(img_f_float);
@@ -85,90 +86,60 @@ SCD  = SCD_metrics(img1_float, img2_float, img_f_float);
 EI   = EI_metrics(img_f_float);
 QTE   = QTE_metrics(img1_int, img2_int, img_f_int, 0.43137); % Nava constants
 rSFe = rSFe_metrics(img1_float, img2_float, img_f_float);
-
-fprintf('EN   = %f\n', EN);
-fprintf('OCE  = %f\n', OCE);
-fprintf('MI   = %f\n', MI);
-fprintf('NMI   = %f\n', NMI);
-fprintf('MLI_F = %f\n', MLI_F);
-fprintf('MLI_ref = %f\n', MLI_ref);
-fprintf('PSNR = %f\n', PSNR);
-fprintf('MSE  = %f\n', MSE);
-fprintf('SF   = %f\n', SF);
-fprintf('SD   = %f\n', SD);
-fprintf('AG   = %f\n', AG);
-fprintf('CC   = %f\n', CC);
-fprintf('SCD  = %f\n', SCD);
-fprintf('EI   = %f\n', EI);
-fprintf('QTE   = %f\n', QTE);
-fprintf('rSFe = %f\n', rSFe);
-
+% =========================================================
+% QUALITY METRICS
+% =========================================================
+fprintf('MLI Error: %f\n', MLI_error);
+fprintf('Standard Deviation (SD): %f\n', SD);
+fprintf('Average Gradient (AG): %f\n', AG);
+fprintf('Mean Squared Error (MSE): %f\n', MSE);
+fprintf('Peak Signal-to-Noise Ratio (PSNR): %f\n', PSNR);
 
 % =========================================================
-% 2. SMALL-NEIGHBOR METRICS (edge/gradient-based)
-% → vẫn chạy được với 3x3
+% INFO METRICS
 % =========================================================
-fprintf('\n=== SMALL-NEIGHBOR METRICS ===\n');
+fprintf('Entropy (EN): %f\n', EN);
+fprintf('Mutual Information (MI): %f\n', MI);
 
+FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
+FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
+FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
+FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
+
+% Keep only FMI variants that exist in your Python structure
+fprintf('Feature Mutual Information (FMI_pixel): %.6f\n', FMI_pixel);
+fprintf('Feature Mutual Information (FMI_dct): %.6f\n', FMI_dct);
+fprintf('Feature Mutual Information (FMI_w): %.6f\n', FMI_w);
+fprintf('Feature Mutual Information (FMI_edge): %.6f\n', FMI_edge);
+
+fprintf('Sum of Correlations of Differences (SCD): %f\n', SCD);
+
+% =========================================================
+% SMALL-NEIGHBOR METRICS (compute first)
+% =========================================================
 try
-    
-    FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
-    FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
-    FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
-    FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
 
-    Qabf_old = QABF_metrics(img1_float, img2_float, img_f_float);
-    [QABF, LABF, Nabf_K, Nabf] = Petrovic_metrics(img_f_float, img1_float, img2_float);
-    NCIE = NCIE_metrics(img1_float, img2_float, img_f_float);
 
     SSIM = SSIM_metrics(img1_float, img2_float, img_f_float);
     [MEF_SSIM, ~, ~] = MEF_SSIM_metrics(imgSeq, img_f_float);
 
-    VIF  = VIF_metrics(img1_float, img_f_float) + ...
-        VIF_metrics(img2_float, img_f_float);
-
+    VIF  = VIF_metrics(img1_float, img_f_float);
+    VIF_full = vifvec(img_f_float, img1_float);
     VIFF = VIFF_metrics(img1_float, img2_float, img_f_float);
 
-    fprintf('FMI_pixel = %f\n', FMI_pixel);
-    fprintf('FMI_dct   = %f\n', FMI_dct);
-    fprintf('FMI_w     = %f\n', FMI_w);
-    fprintf('FMI_edge  = %f\n', FMI_edge);
-    fprintf('Qabf_old = %f\n', Qabf_old);
-    fprintf('QABF = %f\n', QABF);
-    fprintf('LABF = %f\n', LABF);
-    fprintf('NABF = %f\n', Nabf);
-    fprintf('NABF_K = %f\n', Nabf_K);
-    fprintf('NCIE = %f\n', NCIE);
-    fprintf('\nSSIM = %f\n', SSIM);
-    fprintf('MEF_SSIM = %f\n', MEF_SSIM);
-    fprintf('VIF  = %f\n', VIF);
-    fprintf('VIFF = %f\n', VIFF);
+    % =========================================================
+    % STRUCTURE METRICS
+    % =========================================================
+    fprintf('\nStructural Similarity (SSIM): %f\n', SSIM);
+    fprintf('Multi-Scale SSIM (MEF-SSIM): %f\n', MEF_SSIM);
+
+    % =========================================================
+    % VISUAL METRICS
+    % =========================================================
+    fprintf('Visual Information Fidelity (VIF): %f\n', VIF);
+    fprintf('Visual Information Fidelity (VIF) Full: %f\n', VIF_full);
+    fprintf('Visual Information Fidelity Fusion (VIFF): %f\n', VIFF);
+
 catch
     fprintf('[WARNING] Small-neighbor metrics failed (border issue)\n');
 end
-
-
-% =========================================================
-% 3. TRUE SLIDING WINDOW METRICS (SSIM-like)
-% → REQUIRE LARGE IMAGE (>= 11x11)
-% =========================================================
-fprintf('\n=== SLIDING WINDOW METRICS ===\n');
-
-
-
-Qcv  = QCV_metrics(img1_float, img2_float, img_f_float);
-Qcb  = QCB_metrics(img1_float, img2_float, img_f_float);
-QP   = QP_metrics(img1_float, img2_float, img_f_float);
-% Qw   = Peilla_metrics(img1_float, img2_float, img_f_float, 1);
-% Qe   = Peilla_metrics(img1_float, img2_float, img_f_float, 2);
-% QC   = QC_metrics(img1_float, img2_float, img_f_float, 2);
-% QY   = QY_metrics(img1_float, img2_float, img_f_float);
-
-
-fprintf('Qcv  = %f\n', Qcv);
-fprintf('Qcb  = %f\n', Qcb);
-% fprintf('Qw   = %f\n', Qw);
-% fprintf('Qe   = %f\n', Qe);
-% fprintf('QC   = %f\n', QC);
-fprintf('QP   = %f\n', QP);
-% fprintf('QY   = %f\n', QY);

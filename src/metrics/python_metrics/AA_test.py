@@ -1,4 +1,6 @@
 import cv2
+import numpy as np
+
 from structure_metrics import *
 from img_metrics import *
 from info_metrics import *
@@ -8,24 +10,29 @@ from visual_metrics import *
 
 
 def load_gray(path):
-    return cv2.imread(path, cv2.IMREAD_GRAYSCALE).astype(np.float64)
+    return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png')
+B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png')
+F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/3015.png')
 
-image_idx = 1
-model = 'DenseFuse'
+# A = np.array([
+#     [80, 20, 85],
+#     [75, 25, 78],
+#     [80, 22, 88]
+# ], dtype=np.uint8)
 
-A = load_gray(f"Image-Fusion/General Evaluation Metric/Image/Source-Image/TNO/ir/0{image_idx}.png")
-B = load_gray(f"Image-Fusion/General Evaluation Metric/Image/Source-Image/TNO/vi/0{image_idx}.png")
-F = load_gray(f"Image-Fusion/General Evaluation Metric/Image/Algorithm/{model}_TNO/0{image_idx}.png")
+# B = np.array([
+#     [30, 110, 35],
+#     [28, 120, 32],
+#     [26, 115, 30]
+# ], dtype=np.uint8)
 
-# A = np.array([[10, 20, 30, 40],
-#               [50, 60, 70, 80],
-#               [90, 100, 110, 120]], dtype=np.float64)
-# B = np.array([[15, 25, 35, 45],
-#               [55, 65, 75, 85],
-#               [95, 105, 115, 125]], dtype=np.float64)
-# F = np.array([[12, 22, 32, 42],
-#               [52, 62, 72, 82],
-#               [92, 102, 112, 122]], dtype=np.float64)
+# F = np.array([
+#     [58, 70, 60],
+#     [55, 78, 57],
+#     [62, 75, 61]
+# ], dtype=np.uint8)
+
 
 # import matplotlib.pyplot as plt
 # fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -43,15 +50,36 @@ F = load_gray(f"Image-Fusion/General Evaluation Metric/Image/Algorithm/{model}_T
 
 print("Image shapes:", A.shape, "Image range:", A.min(), "-", A.max(), "-", A.dtype)
 
-print(f"EN    : {en(F):.4f}")
-print(f"MI    : {mi(A, B, F):.4f}")
-print(f"SD    : {sd(F):.4f}")
-print(f"SF    : {sf(F):.4f}")
-print(f"MSE   : {mse(A, B, F):.4f}")
-print(f"PSNR  : {psnr(A, B, F):.4f}")
-print(f"VIF   : {vif(A, F):.4f}")
-print(f"AG    : {ag(F):.4f}")
-print(f"SCD   : {scd(A, B, F):.4f}")
-print(f"QABF  : {qabf(A, B, F):.4f}")
+# =========================================================
+# QUALITY METRICS
+# =========================================================
+print("MLI Error: %.6f" % mli_error(A, B, F))
+print("Standard Deviation (SD): %.6f" % sd(F))
+print("Average Gradient (AG): %.6f" % ag(F))
+print("Mean Squared Error (MSE): %.6f" % mse(A, B, F))
+print("Peak Signal-to-Noise Ratio (PSNR): %.6f" % psnr(A, B, F))
 
-print(f"MS_SSIM: {ms_ssim(np.stack([A, B], axis=2), F):.4f}")
+# =========================================================
+# INFO METRICS
+# =========================================================
+print("Entropy (EN): %.6f" % en(F))
+print("Mutual Information (MI): %.6f" % mi(A, B, F))
+
+print("Feature Mutual Information (FMI_pixel): %.6f" % fmi(A, B, F))
+print("Feature Mutual Information (FMI_dct): %.6f" % fmi(A, B, F, feature="dct"))
+print("Feature Mutual Information (FMI_wavelet): %.6f" % fmi(A, B, F, feature="wavelet"))
+print("Feature Mutual Information (FMI_edge): %.6f" % fmi(A, B, F, feature="edge"))
+
+print("Sum of the Correlations of Differences (SCD): %.6f" % scd(A, B, F))
+
+# =========================================================
+# STRUCTURE METRICS
+# =========================================================
+print("\nStructural Similarity (SSIM): %.6f" % (0.5 * ssim(A, F) + 0.5 * ssim(B, F)))
+print("Multi-Scale Structural Similarity (MS-SSIM): %.6f" % ms_ssim(np.stack([A, B], axis=2), F))
+
+# =========================================================
+# VISUAL METRICS
+# =========================================================
+print("Visual Information Fidelity (VIF): %.6f" % (vif(A, F) + vif(B, F)))
+print("Visual Information Fidelity Fusion (VIFF): %.6f" % viff(A, B, F))

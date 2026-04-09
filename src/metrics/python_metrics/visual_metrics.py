@@ -103,7 +103,7 @@ def vif(ref: np.ndarray, dist: np.ndarray) -> float:
 # VIFF  –  Visual Information Fidelity Fusion
 # ──────────────────────────────────────────────
 
-def viff_metrics(im1: np.ndarray, im2: np.ndarray, imf: np.ndarray) -> float:
+def viff(im1: np.ndarray, im2: np.ndarray, imf: np.ndarray) -> float:
     """
     Compute the VIFF (Visual Information Fidelity for Fusion) metric.
 
