@@ -1,23 +1,7 @@
+import cv2
 import pywt
 import numpy as np
-
-def dwt2(image, wavelet='db1'):
-    """
-    Perform 2D Discrete Wavelet Transform
-    
-    Returns:
-        LL : Approximation (low-low)
-        LH : Horizontal details
-        HL : Vertical details
-        HH : Diagonal details
-    """
-    coeffs2 = pywt.dwt2(image, wavelet)
-    LL, (LH, HL, HH) = coeffs2
-    return LL, LH, HL, HH
-
-def idwt2(LL, LH, HL, HH, wavelet='db1'):
-    coeffs2 = (LL, (LH, HL, HH))
-    return pywt.idwt2(coeffs2, wavelet)
+import matplotlib.pyplot as plt
 
 def multilevel_dwt(image, wavelet='db1', level=3):
     """
@@ -32,12 +16,36 @@ def multilevel_dwt(image, wavelet='db1', level=3):
 
 def multilevel_idwt(coeffs, wavelet='db1'):
     return pywt.waverec2(coeffs, wavelet)
+def visualize_dwt(coeffs, level=1):
+    """
+    Visualize the 4 transform channels (LL, LH, HL, HH) at a specific level
+    """
+    
+    cA = coeffs[0]  # Approximation (LL)
+    cD = coeffs[level]  # Details (LH, HL, HH)
+    
+    cH, cV, cD_diag = cD
+    
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+    axes[0, 0].imshow(cA, cmap='gray')
+    axes[0, 0].set_title('LL (Approximation)')
+    axes[0, 1].imshow(cH, cmap='gray')
+    axes[0, 1].set_title('LH (Horizontal)')
+    axes[1, 0].imshow(cV, cmap='gray')
+    axes[1, 0].set_title('HL (Vertical)')
+    axes[1, 1].imshow(cD_diag, cmap='gray')
+    axes[1, 1].set_title('HH (Diagonal)')
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
-    img = np.random.rand(256, 256)
+    img = cv2.imread('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png', cv2.IMREAD_GRAYSCALE)
 
     coeffs = multilevel_dwt(img, wavelet='db2', level=3)
-    recon = multilevel_idwt(coeffs, wavelet='db2')
 
+    visualize_dwt(coeffs, level=3)
+    
+    recon = multilevel_idwt(coeffs, wavelet='db2')
+    cv2.imshow('Reconstructed Image', recon.astype(np.uint8))
     error = np.mean((img - recon) ** 2)
     print("Reconstruction error:", error)
