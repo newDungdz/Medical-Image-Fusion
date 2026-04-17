@@ -19,6 +19,12 @@ function [x1n,y1n,x2n,y2n,D]=gen_x_y_cordinates(n)
 % Written by Glenn Easley on December 11, 2001.
 % Copyright 2011 by Glenn R. Easley. All Rights Reserved.
 %
+
+stats = @(x, name) fprintf([ ...
+   '%s shape=(%d,%d) min=%.4f max=%.4f mean=%.4f energy=%.4f\n'], ...
+   name, size(x,1), size(x,2), ...
+   min(x(:)), max(x(:)), mean(x(:)), sum(x(:).^2));
+
 n=n+1;
 % initialize vectors
 x1=zeros(n,n);
@@ -54,6 +60,10 @@ for i=1:n,
    end
 end
 
+% disp(xt)
+% disp(x1)
+% disp(y2)
+
 n=n-1;
 x1n=zeros(n,n);
 y1n=zeros(n,n);
@@ -70,9 +80,11 @@ for i=1:n,
 
 % correct for portion outside boundry
 
- 
+
+
 x1n=flipud(x1n);
 y2n(n,1)=n;
+
 %y2n=flipud(y2n);
 
 

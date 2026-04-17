@@ -37,7 +37,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 2
-    h0, h1 = dfilters('dmaxflat4', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('dmaxflat4', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = np.array([0.0104933261758410,-0.0263483047033631,
                     -0.0517766952966370, 0.276348304703363, 0.582566738241592,
@@ -50,7 +50,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 3
-    h0, h1 = dfilters('cd', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('cd', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = np.array([0.0104933261758410, -0.0263483047033631,
                     -0.0517766952966370, 0.276348304703363, 0.582566738241592,
@@ -63,7 +63,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 4 - somehow the same as 3, i don't know why?!
-    h0, h1 = dfilters('cd', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('cd', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = np.array([0.0104933261758410, -0.0263483047033631,
                     -0.0517766952966370, 0.276348304703363, 0.582566738241592,
@@ -76,7 +76,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 5
-    h0, h1 = dfilters('cd', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('cd', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = MakeONFilter('Coiflet', 1)
     waveletFilter = MirrorFilt(scalingFilter)
@@ -86,7 +86,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 6
-    h0, h1 = dfilters('cd', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('cd', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = MakeONFilter('Daubechies', 4)
     waveletFilter = MirrorFilt(scalingFilter)
@@ -96,7 +96,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 7
-    h0, h1 = dfilters('oqf_362', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('oqf_362', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = MakeONFilter('Daubechies', 4)
     waveletFilter = MirrorFilt(scalingFilter)
@@ -106,7 +106,7 @@ def SLcheckFilterSizes(rows,cols, shearLevels,directionalFilter,scalingFilter,
                         "waveletFilter": waveletFilter,
                         "scalingFilter2": scalingFilter2}
     # configuration 8
-    h0, h1 = dfilters('oqf_362', 'd')/np.sqrt(2)
+    h0, h1 = [f / np.sqrt(2) for f in dfilters('oqf_362', 'd')]
     directionalFilter = modulate2(h0, 'c')
     scalingFilter = MakeONFilter('Haar')
     scalingFilter2 = scalingFilter
@@ -460,7 +460,7 @@ def SLgetWedgeBandpassAndLowpassFilters2D(rows,cols,shearLevels,directionalFilte
     if waveletFilter is None:
         waveletFilter = MirrorFilt(scalingFilter)
     if directionalFilter is None:
-        h0,h1 = dfilters('dmaxflat4', 'd')/np.sqrt(2)
+        h0, h1 = [f / np.sqrt(2) for f in dfilters('cd', 'd')]
         directionalFilter = modulate2(h0, 'c')
 
 ###########################################################################
@@ -656,8 +656,13 @@ def SLpadArray(array, newSize):
         if array.ndim == 1:
             paddedArray[padSizes[1], padSizes[0]:padSizes[0]+currSize[0]+idxModifier[0]] = array
         else:
-            paddedArray[padSizes[0]-idxModifier[0]:padSizes[0]+currSize[0]-idxModifier[0],
-                    padSizes[1]:padSizes[1]+currSize[1]+idxModifier[1]] = array
+            row_start = padSizes[0] - idxModifier[0]
+            col_start = padSizes[1] - idxModifier[1]
+
+            row_end = row_start + currSize[0]
+            col_end = col_start + currSize[1]
+
+            paddedArray[row_start:row_end, col_start:col_end] = array
     return paddedArray
 
 
@@ -758,7 +763,7 @@ def SLprepareFilters2D(rows, cols, nScales, shearLevels=None,
     if scalingFilter2 is None:
         scalingFilter2 = scalingFilter
     if directionalFilter is None:
-        h0, h1 = dfilters('dmaxflat4', 'd')/np.sqrt(2)
+        h0, h1 = [f / np.sqrt(2) for f in dfilters('dmaxflat4', 'd')]
         directionalFilter = modulate2(h0, 'c')
     if waveletFilter is None:
         waveletFilter = MirrorFilt(scalingFilter)

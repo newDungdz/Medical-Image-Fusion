@@ -154,7 +154,7 @@ def SLgetShearletSystem2D(useGPU, rows, cols, nScales, shearLevels=None, full=0,
     if shearLevels is None:
         shearLevels = np.ceil(np.arange(1,nScales+1)/2).astype(int)
     if directionalFilter is None:
-        h0, h1 = dfilters('dmaxflat4', 'd')/np.sqrt(2)
+        h0, h1 = [f / np.sqrt(2) for f in dfilters('dmaxflat4', 'd')]
         directionalFilter = modulate2(h0, 'c')
     if quadratureMirrorFilter is None:
         quadratureMirrorFilter = np.array([0.0104933261758410, -0.0263483047033631,

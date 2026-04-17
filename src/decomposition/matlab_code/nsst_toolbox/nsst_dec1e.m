@@ -32,6 +32,10 @@ function [dst,shear_f]=nsst_dec1e(x,shear_parameters,lpfilt)
 % Code contributors: Glenn R. Easley, Demetrio Labate, and Wang-Q Lim.
 % Copyright 2011 by Glenn R. Easley. All Rights Reserved.
 %
+stats = @(x, name) fprintf([ ...
+    '%s shape=(%d,%d) min=%.4f max=%.4f mean=%.4f energy=%.4f\n'], ...
+    name, size(x,1), size(x,2), ...
+    min(x(:)), max(x(:)), mean(x(:)), sum(x(:).^2));
 
 [L,L]=size(x);
 level=length(shear_parameters.dcomp);
@@ -42,11 +46,15 @@ y = atrousdec(x,lpfilt,level);
 dst = cell(1,level+1);
 dst{1}=y{1}; % assign low-pass coefficients to first decomposition index
 
+stats(y{1}, 'y')
+disp(' ');
 shear_f=cell(1,level); % declare cell array containing shearing filters
 for i=1:level, 
     shear_f{i}=shearing_filters_Myer(shear_parameters.dsize(i),shear_parameters.dcomp(i)).*sqrt(shear_parameters.dsize(i));
     for k=1:2^shear_parameters.dcomp(i),
         dst{i+1}(:,:,k)=conv2(y{i+1},shear_f{i}(:,:,k),'same');
+        stats(dst{i+1}(:,:,k), sprintf('Level %d detail dir %d', i, k));
     end
+    disp(' ');
 end
 
