@@ -1,8 +1,9 @@
 import numpy as np
 from scipy import signal
-from scipy.ndimage import sobel, convolve, uniform_filter
-from numpy.lib.stride_tricks import sliding_window_view
-from scipy.ndimage import sobel
+from scipy.ndimage import convolve, uniform_filter
+
+from PIL import Image
+import time
 
 # ──────────────────────────────────────────────
 # Structural Similarity (SSIM)
@@ -70,7 +71,7 @@ def _imgaussfilt(A, sigma, filt_size, padding='replicate'):
     out = convolve(out,                          hrow[np.newaxis, :], mode=pad_mode)
     return out
  
- 
+
 # ---------------------------------------------------------------------------
 # Core algorithm  (mirrors ssimalgo.m)
 # ---------------------------------------------------------------------------
@@ -139,7 +140,6 @@ def _ssimalgo(A, ref, gauss_fn, exponents, C, num_spatial_dims):
     ssimval = ssimmap.mean(axis=axis)
     return ssimval, ssimmap
  
- 
 # ---------------------------------------------------------------------------
 # Dynamic-range helper
 # ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ def ssim(A, ref,
     """
     Structural Similarity Index (SSIM).
  
-    Python port of MATLAB's ``ssim(A, ref, ...)`` (Image Processing Toolbox).
+    Python port of MATLAB's offical SSIM ``ssim(A, ref, ...)`` (Image Processing Toolbox).
  
     Parameters
     ----------
@@ -204,8 +204,8 @@ def ssim(A, ref,
     * The Gaussian filter uses 'replicate' (nearest-neighbour) boundary
       padding, matching MATLAB's default.
     """
-    A   = np.asarray(A)
-    ref = np.asarray(ref)
+    A   = np.asarray(A, dtype=np.float32)
+    ref = np.asarray(ref, dtype=np.float32)
  
     if A.dtype != ref.dtype:
         raise TypeError("A and ref must have the same dtype "
@@ -226,7 +226,7 @@ def ssim(A, ref,
     if dynamic_range is None:
         dynamic_range = _dynamic_range_from_dtype(A.dtype)
     DR = float(dynamic_range)
- 
+    # print(dynamic_range)
     # --- dtype handling (mirrors ssimParseInputs.m) ---
     if A.dtype == np.int16:
         offset = float(np.iinfo(np.int16).min)   # -32768
@@ -248,6 +248,7 @@ def ssim(A, ref,
         C = np.asarray(regularization_constants, dtype=float)
         if C.shape != (3,):
             raise ValueError("regularization_constants must have exactly 3 elements.")
+    # print(exponents)
     # print(C)
     # --- filter size (mirrors ssimParseInputs.m) ---
     filt_radius = int(np.ceil(radius * 3))   # 3 std-devs cover >99 % of area
@@ -270,147 +271,428 @@ def ssim(A, ref,
  
     ssimval, ssimmap = _ssimalgo(A, ref, gauss_fn, exponents, C, num_spatial_dims)
     return ssimval
+
+import numpy as np
+from scipy.ndimage import convolve
+from scipy.signal import windows
+
+
+def gaussian_window(size: int = 11, sigma: float = 1.5) -> np.ndarray:
+    """Create a 2D Gaussian window, normalised to sum to 1."""
+    k = windows.gaussian(size, sigma)
+    w = np.outer(k, k)
+    return w / w.sum()
+
+
+def ssim_index(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    K: tuple[float, float] = (0.01, 0.03),
+    window: np.ndarray | None = None,
+    L: int = 255,
+) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Compute the Structural SIMilarity (SSIM) index between two images.
+
+    Translated from the MATLAB implementation by Zhou Wang (2003).
+    Reference:
+        Z. Wang, A. C. Bovik, H. R. Sheikh, and E. P. Simoncelli,
+        "Image quality assessment: From error measurement to structural
+        similarity", IEEE Transactions on Image Processing, vol. 13, 2004.
+
+    Parameters
+    ----------
+    img1 : np.ndarray
+        First image (2-D grayscale, dtype float or uint8).
+    img2 : np.ndarray
+        Second image, same shape as img1.
+    K : tuple[float, float]
+        Stability constants (K1, K2). Default: (0.01, 0.03).
+    window : np.ndarray or None
+        Local weighting window. If None, an 11×11 Gaussian (σ=1.5) is used.
+    L : int
+        Dynamic range of the images. Default: 255.
+
+    Returns
+    -------
+    mssim : float
+        Mean SSIM index. Equal to 1.0 when img1 == img2.
+    ssim_map : np.ndarray
+        Per-pixel SSIM map (smaller than input by window size − 1).
+    sigma1_sq : np.ndarray
+        Local variance of img1.
+    sigma2_sq : np.ndarray
+        Local variance of img2.
+
+    Raises
+    ------
+    ValueError
+        If inputs are invalid (shape mismatch, image too small, bad K values).
+    """
+    if img1.shape != img2.shape:
+        raise ValueError(
+            f"Images must have the same shape, got {img1.shape} and {img2.shape}."
+        )
+
+    M, N = img1.shape[:2]
+
+    if window is None:
+        if M < 11 or N < 11:
+            raise ValueError(
+                "Images must be at least 11×11 pixels when using the default window."
+            )
+        window = gaussian_window(11, 1.5)
+
+    H, W = window.shape
+    if H * W < 4 or H > M or W > N:
+        raise ValueError(
+            "Window must have at least 4 elements and must not exceed image dimensions."
+        )
+
+    K1, K2 = K
+    if K1 < 0 or K2 < 0:
+        raise ValueError("K values must be non-negative.")
+
+    C1 = (K1 * L) ** 2
+    C2 = (K2 * L) ** 2
+
+    window = window / window.sum()
+    img1 = img1.astype(np.float64)
+    img2 = img2.astype(np.float64)
+
+    def _filt(img: np.ndarray) -> np.ndarray:
+        """2-D convolution in 'valid' mode (same as MATLAB filter2 + 'valid')."""
+        return convolve(img, window, mode="constant", cval=0.0)[
+            H // 2 : M - (H - 1 - H // 2),
+            W // 2 : N - (W - 1 - W // 2),
+        ]
+
+    mu1 = _filt(img1)
+    mu2 = _filt(img2)
+
+    mu1_sq  = mu1 * mu1
+    mu2_sq  = mu2 * mu2
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = _filt(img1 * img1) - mu1_sq
+    sigma2_sq = _filt(img2 * img2) - mu2_sq
+    sigma12   = _filt(img1 * img2) - mu1_mu2
+
+    if C1 > 0 and C2 > 0:
+        ssim_map = (
+            (2 * mu1_mu2 + C1) * (2 * sigma12 + C2)
+        ) / (
+            (mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2)
+        )
+    else:
+        numerator1   = 2 * mu1_mu2  + C1
+        numerator2   = 2 * sigma12  + C2
+        denominator1 = mu1_sq + mu2_sq + C1
+        denominator2 = sigma1_sq + sigma2_sq + C2
+
+        ssim_map = np.ones_like(mu1)
+
+        mask_both = (denominator1 * denominator2) > 0
+        ssim_map[mask_both] = (
+            numerator1[mask_both] * numerator2[mask_both]
+        ) / (denominator1[mask_both] * denominator2[mask_both])
+
+        mask_one = (denominator1 != 0) & (denominator2 == 0)
+        ssim_map[mask_one] = numerator1[mask_one] / denominator1[mask_one]
+
+    mssim = float(ssim_map.mean())
+
+    return mssim, ssim_map, sigma1_sq, sigma2_sq
+
+
+
 # ──────────────────────────────────────────────
 # MS_SSIM  –  Multi-Scale SSIM for MEF
 # ──────────────────────────────────────────────
+import numpy as np
+from scipy.ndimage import uniform_filter
+from scipy import signal
+
+
+def _extract_patches(arr, wsize):
+    """
+    arr   : H×W  or  H×W×N
+    returns (H', W', wsize, wsize)  or  (H', W', wsize, wsize, N)
+    """
+    from numpy.lib.stride_tricks import sliding_window_view
+    if arr.ndim == 2:
+        return sliding_window_view(arr, (wsize, wsize))          # (H', W', w, w)
+    else:
+        H, W, N = arr.shape
+        views = []
+        for k in range(N):
+            views.append(sliding_window_view(arr[:, :, k], (wsize, wsize)))
+        return np.stack(views, axis=-1)                          # (H', W', w, w, N)
+
+
 def _mef_ssim(seq, fi, wsize=11, K=0.03):
     """
-    Single-scale MEF-SSIM.
-    seq : H×W×N stack of source images
-    fi  : fused image
+    Vectorised single-scale MEF-SSIM.
+    seq : H×W×N  stack of source images
+    fi  : H×W    fused image
     """
-
     seq = seq.astype(np.float64)
-    fi = fi.astype(np.float64)
+    fi  = fi.astype(np.float64)
 
     H, W, N = seq.shape
     bd = wsize // 2
-    C = (K * 255) ** 2
+    C  = (K * 255) ** 2
 
-    # mean of each source image
-    mu = uniform_filter(seq, size=(wsize, wsize, 1))[bd:-bd, bd:-bd, :]
-
-    # variance → edge strength
+    # ------------------------------------------------------------------ #
+    # 1.  Per-pixel statistics (same as before, O(HWN) uniform filters)   #
+    # ------------------------------------------------------------------ #
+    mu    = uniform_filter(seq,      size=(wsize, wsize, 1))[bd:-bd, bd:-bd, :]   # (H', W', N)
     sigma = uniform_filter(seq ** 2, size=(wsize, wsize, 1))[bd:-bd, bd:-bd, :] - mu ** 2
-    ed = np.sqrt(np.maximum(wsize ** 2 * sigma, 0)) + 1e-3
+    ed    = np.sqrt(np.maximum(wsize ** 2 * sigma, 0)) + 1e-3                     # (H', W', N)
 
-    # gaussian window
-    ax = np.arange(-5, 6)
-    g = np.exp(-(ax ** 2) / (2 * 1.5 ** 2))
+    # ------------------------------------------------------------------ #
+    # 2.  Gaussian window — kept as a flat vector                         #
+    # ------------------------------------------------------------------ #
+    ax   = np.arange(-5, 6)
+    g    = np.exp(-(ax ** 2) / (2 * 1.5 ** 2))
     gwin = np.outer(g, g)
     gwin /= gwin.sum()
-    
-    
-    qmap = np.zeros((H - 2 * bd, W - 2 * bd))
+    gw   = gwin.ravel()                   # (w²,)
 
-    for i in range(bd, H - bd):
-        for j in range(bd, W - bd):
+    # ------------------------------------------------------------------ #
+    # 3.  Extract patches as one big batch                                 #
+    #     seq_p : (H', W', w, w, N)  →  (B, w², N)   B = H'×W'          #
+    #     fi_p  : (H', W', w, w)     →  (B, w²)                          #
+    # ------------------------------------------------------------------ #
+    seq_p = _extract_patches(seq, wsize)          # (H', W', w, w, N)
+    fi_p  = _extract_patches(fi,  wsize)          # (H', W', w, w)
 
-            patch = seq[i-bd:i+bd+1, j-bd:j+bd+1, :]
-            vecs = patch.reshape(wsize*wsize, N)
+    Hp, Wp = seq_p.shape[:2]
+    B  = Hp * Wp
+    ww = wsize * wsize
 
-            mu_local = mu[i-bd, j-bd, :]
-            ed_local = ed[i-bd, j-bd, :]
+    vecs = seq_p.reshape(B, ww, N)               # (B, w², N)
+    fv   = fi_p.reshape(B, ww)                   # (B, w²)
 
-            # structure consistency
-            denom = sum(np.linalg.norm(vecs[:,k] - mu_local[k]) for k in range(N))
-            numerator = np.linalg.norm(vecs.sum(axis=1) - vecs.sum(axis=1).mean())
+    mu_b = mu.reshape(B, N)                       # (B, N)
+    ed_b = ed.reshape(B, N)                       # (B, N)
 
-            R = (numerator + 1e-10) / (denom + 1e-10)
-            R = np.clip(R, 1e-10, 1-1e-10)
+    # ------------------------------------------------------------------ #
+    # 4.  Structure-consistency weight  R → p → wk   (fully batched)      #
+    # ------------------------------------------------------------------ #
+    # vecs[:,k,:] - mu_b[:,k]   →  (B, w², N)
+    centered = vecs - mu_b[:, np.newaxis, :]      # (B, w², N)
 
-            p = min(np.tan(np.pi/2 * R), 10)
+    # ||vecs[:,k] - mu_k||  for each source k  →  (B, N)
+    denom = np.linalg.norm(centered, axis=1)      # (B, N)   (norm over w² pixels)
 
-            wk = (ed_local / wsize) ** p
-            wk = wk / (wk.sum() + 1e-10)
+    # sum over sources first, then norm over pixels  →  (B,)
+    sumvec   = centered.sum(axis=2)               # (B, w²)
+    numerator = np.linalg.norm(
+        sumvec - sumvec.mean(axis=1, keepdims=True), axis=1)  # (B,)
 
-            maxEd = ed_local.max()
+    R  = (numerator + 1e-10) / (denom.sum(axis=1) + 1e-10)   # (B,)
+    R  = np.clip(R, 1e-10, 1 - 1e-10)
 
-            rblock = sum(
-                wk[k] * (vecs[:,k] - mu_local[k]) / (ed_local[k] + 1e-10)
-                for k in range(N)
-            )
+    p  = np.clip(np.tan(np.pi / 2 * R), 0, 10)               # (B,)
 
-            rblock = rblock.reshape(wsize, wsize)
+    # wk : edge-weighted, source-wise  →  (B, N)
+    wk = (ed_b / wsize) ** p[:, np.newaxis]       # (B, N)
+    wk = wk / (wk.sum(axis=1, keepdims=True) + 1e-10)
 
-            nrm = np.linalg.norm(rblock)
-            if nrm > 0:
-                rblock = rblock / nrm * maxEd
+    maxEd = ed_b.max(axis=1)                      # (B,)
 
-            fblock = fi[i-bd:i+bd+1, j-bd:j+bd+1]
+    # ------------------------------------------------------------------ #
+    # 5.  Reference block  r = Σ_k  wk * (vecs_k - mu_k) / ed_k          #
+    #     shape: (B, w²)                                                  #
+    # ------------------------------------------------------------------ #
+    rblock = (wk[:, np.newaxis, :] * centered
+              / (ed_b[:, np.newaxis, :] + 1e-10)
+             ).sum(axis=2)                         # (B, w²)
 
-            rv = rblock.ravel()
-            fv = fblock.ravel()
-            gw = gwin.ravel()
+    nrm = np.linalg.norm(rblock, axis=1, keepdims=True)      # (B, 1)
+    safe_nrm = np.where(nrm > 0, nrm, 1.0)          # replace 0 → 1 so division is always safe
+    rblock = rblock / safe_nrm * maxEd[:, np.newaxis] # now no zero-division, ever                                         # (B, w²)
 
-            mu1 = (gw * rv).sum()
-            mu2 = (gw * fv).sum()
+    # ------------------------------------------------------------------ #
+    # 6.  Gaussian-weighted SSIM between rblock and fi patch              #
+    # ------------------------------------------------------------------ #
+    # gw : (w²,) — broadcast over batch
+    mu1 = (gw * rblock).sum(axis=1)               # (B,)
+    mu2 = (gw * fv).sum(axis=1)                   # (B,)
 
-            s1 = (gw * (rv - mu1) ** 2).sum()
-            s2 = (gw * (fv - mu2) ** 2).sum()
-            s12 = (gw * (rv - mu1) * (fv - mu2)).sum()
+    rv_c = rblock - mu1[:, np.newaxis]            # (B, w²)
+    fv_c = fv    - mu2[:, np.newaxis]             # (B, w²)
 
-            qmap[i-bd, j-bd] = (2 * s12 + C) / (s1 + s2 + C)
+    s1  = (gw * rv_c ** 2).sum(axis=1)            # (B,)
+    s2  = (gw * fv_c ** 2).sum(axis=1)            # (B,)
+    s12 = (gw * rv_c * fv_c).sum(axis=1)          # (B,)
+
+    qmap = (2 * s12 + C) / (s1 + s2 + C)         # (B,)
 
     return qmap.mean()
+
+
+def _downsample(arr):
+    """
+    Box-filter (2×2 average) + stride-2 decimation.
+    arr : H×W  or  H×W×N  — handled uniformly.
+    """
+    # Separable 2-tap box filter: blur then subsample
+    # uniform_filter with size=2 is equivalent to the (2,2)/4 convolution
+    if arr.ndim == 2:
+        blurred = uniform_filter(arr, size=(2, 2), mode='mirror')
+        return blurred[::2, ::2]
+    else:
+        # Apply the spatial filter to H and W axes only; leave N axis untouched
+        blurred = uniform_filter(arr, size=(2, 2, 1), mode='mirror')
+        return blurred[::2, ::2, :]
 
 
 def ms_ssim(img_seq, fI, K=0.03, level=3):
     """
     Multi-scale MEF-SSIM
 
-    img_seq : H×W×N stack of source images
-    fI      : fused image
+    img_seq : H×W×N  stack of source images
+    fI      : H×W    fused image
     """
-
-    weight = np.array([0.0448, 0.2856, 0.3001])
-    weight = weight[:level]
+    weight = np.array([0.0448, 0.2856, 0.3001])[:level]
     weight = weight / weight.sum()
 
-    down = np.ones((2,2)) / 4
-
     img_seq = img_seq.astype(np.float64)
-    fI = fI.astype(np.float64)
-    Q = np.zeros(level)
+    fI      = fI.astype(np.float64)
 
+    Q = np.empty(level)
     for l in range(level):
-
-        Q[l] = _mef_ssim(img_seq, fI)
-
-        if l < level-1:
-
-            seq_new = np.zeros(
-                ((img_seq.shape[0]+1)//2,
-                 (img_seq.shape[1]+1)//2,
-                 img_seq.shape[2])
-            )
-
-            for i in range(img_seq.shape[2]):
-                d = signal.convolve2d(
-                    img_seq[:,:,i],
-                    down,
-                    mode='same',
-                    boundary='symm'
-                )
-                seq_new[:,:,i] = d[::2, ::2]
-
-            img_seq = seq_new
-
-            d = signal.convolve2d(fI, down, mode='same', boundary='symm')
-            fI = d[::2, ::2]
+        Q[l] = _mef_ssim(img_seq, fI, K=K)
+        if l < level - 1:
+            img_seq = _downsample(img_seq)   # (H', W', N) — one call, no channel loop
+            fI      = _downsample(fI)        # (H', W')
 
     return float(np.prod(Q ** weight))
+
+def piella_metrics(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    fuse: np.ndarray,
+    sw: int,
+) -> float:
+    """
+    Compute the Piella fusion quality index between two source images and a
+    fused image.
+ 
+    Reference:
+        G. Piella and H. Heijmans, "A new quality metric for image fusion",
+        IEEE ICIP 2003.
+ 
+    Original MATLAB implementation by Z. Liu @ NRCC, 4 Oct 2003.
+ 
+    Parameters
+    ----------
+    img1 : np.ndarray
+        First source image (2-D grayscale).
+    img2 : np.ndarray
+        Second source image, same shape as img1.
+    fuse : np.ndarray
+        Fused image, same shape as img1.
+    sw : int
+        Metric selector:
+            1 → Q   — basic fusion quality index
+            2 → Qw  — weighted fusion quality index
+            3 → Qe  — edge-dependent fusion quality index
+ 
+    Returns
+    -------
+    float
+        The selected fusion quality metric value.
+ 
+    Raises
+    ------
+    ValueError
+        If `sw` is not 1, 2, or 3.
+    """
+    if sw not in (1, 2, 3):
+        raise ValueError(f"sw must be 1, 2, or 3; got {sw}.")
+ 
+    def _compute_lambda(i1: np.ndarray, i2: np.ndarray):
+        """
+        Compute per-pixel lambda (local variance weight) and the two SSIM maps
+        of the fused image against each source.
+        """
+        _, _, sigma1_sq, sigma2_sq = ssim_index(i1, i2)
+ 
+        buffer = sigma1_sq + sigma2_sq
+        # Avoid division by zero: if both variances are zero, set each to 0.5
+        zero_mask = (buffer == 0).astype(np.float64) * 0.5
+        sigma1_sq = sigma1_sq + zero_mask
+        sigma2_sq = sigma2_sq + zero_mask
+        buffer    = sigma1_sq + sigma2_sq
+ 
+        lam = sigma1_sq / buffer
+        return lam, sigma1_sq, sigma2_sq
+ 
+    def _edge_magnitude(img: np.ndarray) -> np.ndarray:
+        """Prewitt-like edge magnitude map."""
+        flt_x = np.array([[1, 0, -1],
+                           [1, 0, -1],
+                           [1, 0, -1]], dtype=np.float64)
+        flt_y = np.array([[ 1,  1,  1],
+                           [ 0,  0,  0],
+                           [-1, -1, -1]], dtype=np.float64)
+        img_f = img.astype(np.float64)
+        gx = convolve(img_f, flt_x, mode="reflect")
+        gy = convolve(img_f, flt_y, mode="reflect")
+        return np.sqrt(gx ** 2 + gy ** 2)
+ 
+    if sw in (1, 2):
+        lam, sigma1_sq, sigma2_sq = _compute_lambda(img1, img2)
+        _, ssim_map1 = ssim_index(fuse, img1)[:2]
+        _, ssim_map2 = ssim_index(fuse, img2)[:2]
+ 
+        Q_map = lam * ssim_map1 + (1 - lam) * ssim_map2
+ 
+        if sw == 1:
+            return float(Q_map.mean())
+ 
+        # sw == 2 — spatially weighted by max local variance
+        stack = np.stack([sigma1_sq, sigma2_sq], axis=-1)
+        Cw    = stack.max(axis=-1)
+        cw    = Cw / Cw.sum()
+        return float((cw * Q_map).sum())
+ 
+    # sw == 3 — edge-dependent
+    fuse_F = _edge_magnitude(fuse)
+    img1_F = _edge_magnitude(img1)
+    img2_F = _edge_magnitude(img2)
+ 
+    lam, sigma1_sq, sigma2_sq = _compute_lambda(img1_F, img2_F)
+    _, ssim_map1 = ssim_index(fuse_F, img1_F)[:2]
+    _, ssim_map2 = ssim_index(fuse_F, img2_F)[:2]
+ 
+    stack = np.stack([sigma1_sq, sigma2_sq], axis=-1)
+    Cw    = stack.max(axis=-1)
+    cw    = Cw / Cw.sum()
+    Qw    = float((cw * (lam * ssim_map1 + (1 - lam) * ssim_map2)).sum())
+ 
+    alpha = 1
+    Qe    = Qw * Qw ** alpha   # = Qw^(1 + alpha)
+    return Qe
+ 
 
 if __name__ == "__main__":
     import cv2
     def load_gray(path):
-        return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/3015.png')
-    B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/3015.png')
-    F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/3015.png')
+        return np.array(Image.open(path).convert("L"))
+    import time
+    A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
+    B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
+    F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
+
+    start = time.time()
     
-    ssimval1 = ssim(A, F)
-    ssimval2 = ssim(B, F)
+    ms_ssim_value = ms_ssim(np.stack([A, B], axis=2), F)
     
-    print("SSIM1:", ssimval1)
-    print("SSIM2:", ssimval2)
+    end = time.time()
+    
+    print(ms_ssim_value)
+    print("Time:", end - start)

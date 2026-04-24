@@ -50,6 +50,7 @@ if size(ima) ~= size(imb)	% Check if the source images are of the same size
 end
 
 if size(ima) ~= size(imf)	% Check if the source images are of the same size
+    disp(size(ima)); disp(size(imf));
     error('Size of the source and fused images must be the same!');
 end
 
@@ -93,6 +94,7 @@ switch feature
     case 'wavelet'      % Discrete Meyer wavelet
         [cA,cH,cV,cD] = dwt2(ima,'dmey');
         aFeature = rerange([cA,cH;cV,cD]);
+        % disp(cH)
         [cA,cH,cV,cD] = dwt2(imb,'dmey');
         bFeature = rerange([cA,cH;cV,cD]);
         [cA,cH,cV,cD] = dwt2(imf,'dmey');
@@ -103,6 +105,12 @@ switch feature
         
 end
 
+% save('edge_feat.mat', 'aFeature', 'bFeature', 'fFeature');
+
+% disp(aFeature)
+
+% disp(bFeature)
+% disp(fFeature)
 
 % Sliding window
 
@@ -116,7 +124,7 @@ for p = w+1:m-w
         aSub = aFeature(p-w:p+w, q-w:q+w);
         bSub = bFeature(p-w:p+w, q-w:q+w);
         fSub = fFeature(p-w:p+w, q-w:q+w);
-        
+        % disp(aSub)
         l = round((2*w+1).^2);
         
         if aSub == fSub
@@ -141,7 +149,6 @@ for p = w+1:m-w
             % Normalize the feature images to get the marginal PDFs
             aPdf = aSub(:)./(sum(sum(aSub)));
             fPdf = fSub(:)./(sum(sum(fSub)));
-            
             % PDF to CDF tranformation
             aCdf = zeros(size(aPdf));
             fCdf = zeros(size(fPdf));
@@ -160,7 +167,6 @@ for p = w+1:m-w
             else
                 c = sum(aTemp.*fTemp)/sqrt(sum(aTemp.*aTemp)*sum(fTemp.*fTemp));
             end
-            
             % Population standard deviations
             e_aPdf = 0; e2_aPdf = 0; e_fPdf = 0; e2_fPdf = 0; 
             for i = 1:l
@@ -171,8 +177,6 @@ for p = w+1:m-w
             end
             aSd = sqrt(e2_aPdf - e_aPdf.^2);	% Population standard deviation of aPdf
             fSd = sqrt(e2_fPdf - e_fPdf.^2);	% Population standard deviation of fPdf
-            
-            
             jointEntropy = 0;
             % Joint PDF calculation using simplified Nelsen method with joint entropy calculation
             if c >= 0
@@ -245,22 +249,29 @@ for p = w+1:m-w
                     corrLo = covLo/(fSd*aSd); % Lower correlation between f & a
                     theta = c/corrLo;
                 end
-                
+
                 jpdfLo = 0.5*(fCdf(1)+aCdf(1)-1+abs(fCdf(1)+aCdf(1)-1));
                 jpdf = theta.*jpdfLo + (1-theta).*fPdf(1).*aPdf(1);
                 if jpdf~=0
                     jointEntropy = real(-jpdf.*log2(jpdf)); % Joint entropy
                 end
-                
+                % disp('First Element')
+                % disp(jointEntropy)
                 % 1-D boundaries
                 for i=2:l
                     jpdfLo = 0.5*(fCdf(i)+aCdf(1)-1+abs(fCdf(i)+aCdf(1)-1)) - ...
                         0.5*(fCdf(i-1)+aCdf(1)-1+abs(fCdf(i-1)+aCdf(1)-1));
                     jpdf = theta.*jpdfLo + (1-theta).*fPdf(i).*aPdf(1);
+                    % disp(0.5*(fCdf(i)+aCdf(1)-1+abs(fCdf(i)+aCdf(1)-1)))
+                    % disp(0.5*(fCdf(i-1)+aCdf(1)-1+abs(fCdf(i-1)+aCdf(1)-1)))
+                    % fprintf('%d %.8f\n', i, jpdf)
                     if jpdf~=0
                         jointEntropy = jointEntropy + real(-jpdf.*log2(jpdf)); % Joint entropy
                     end
                 end
+                % disp('After First Row')
+                % disp(jointEntropy)
+
                 for j=2:l
                     jpdfLo = 0.5*(fCdf(1)+aCdf(j)-1+abs(fCdf(1)+aCdf(j)-1)) - ...
                         0.5*(fCdf(1)+aCdf(j-1)-1+abs(fCdf(1)+aCdf(j-1)-1));
@@ -269,6 +280,9 @@ for p = w+1:m-w
                         jointEntropy = jointEntropy + real(-jpdf.*log2(jpdf)); % Joint entropy
                     end
                 end
+                
+                % disp('After First Col')
+                % disp(jointEntropy)
                 % 2-D walls
                 for i=2:l
                     for j=2:l
@@ -277,12 +291,16 @@ for p = w+1:m-w
                             0.5*(fCdf(i)+aCdf(j-1)-1+abs(fCdf(i)+aCdf(j-1)-1)) + ...
                             0.5*(fCdf(i-1)+aCdf(j-1)-1+abs(fCdf(i-1)+aCdf(j-1)-1));
                         jpdf = theta.*jpdfLo + (1-theta).*fPdf(i).*aPdf(j);
+                        % fprintf('%d %d %.8f\n', i, j, jpdf)
                         if jpdf~=0
                             jointEntropy = jointEntropy + real(-jpdf.*log2(jpdf)); % Joint entropy
                         end
+                        % fprintf('%d %d %.3f\n', i, j ,jpdfLo);
+
                     end
                 end
-                
+                % disp('Final')
+                % disp(jointEntropy)
             end
             
             % Marginal entropies
@@ -290,10 +308,8 @@ for p = w+1:m-w
             aEntropy = sum(-aPdf(index).*log2(aPdf(index)));
             index = find(fPdf~=0);
             fEntropy = sum(-fPdf(index).*log2(fPdf(index)));
-            
             % Mutual information between a & f
             mi = aEntropy + fEntropy - jointEntropy;  
-            
             % Overall normalized mutual information
             if mi == 0
                 fmi_af = 0;

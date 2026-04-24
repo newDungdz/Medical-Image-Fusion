@@ -1,9 +1,12 @@
 import numpy as np
-from scipy import signal
-from scipy.ndimage import sobel, convolve, uniform_filter
-from numpy.lib.stride_tricks import sliding_window_view
 from scipy.ndimage import sobel
 from scipy.fft import dctn
+import pywt
+import cv2
+from skimage.util import view_as_windows
+
+EPS = 1e-12
+
 
 # ──────────────────────────────────────────────
 # ! EN  –  Entropy
@@ -61,7 +64,7 @@ def _rerange(im: np.ndarray) -> np.ndarray:
 def _extract_feature(im: np.ndarray, feature: str) -> np.ndarray:
     """Apply the requested feature extraction to a 2-D image."""
     im = im.astype(np.float64)
- 
+    # print("Original:",im)
     if feature == "none":
         return im
  
@@ -72,22 +75,25 @@ def _extract_feature(im: np.ndarray, feature: str) -> np.ndarray:
  
     elif feature == "edge":
         # Sobel magnitude — matches MATLAB edge(im) default (Sobel)
-        sx = sobel(im, axis=1)
-        sy = sobel(im, axis=0)
-        return np.hypot(sx, sy)
- 
+        sx = sobel(im, axis=1)/8
+        sy = sobel(im, axis=0)/8
+        # Mimic Matlab thresholding
+        b = (sx**2 + sy**2)
+        b= np.float64(b)
+        cutoff = 4 * np.mean(b)
+        # print('cutoff:', cutoff)
+        edges = np.uint8(b > cutoff) 
+        thinned_edges = cv2.ximgproc.thinning(edges * 255, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+
+        return thinned_edges
+        
     elif feature == "dct":
         return dctn(im, norm="ortho")
  
     elif feature == "wavelet":
-        try:
-            import pywt
-        except ImportError:
-            raise ImportError(
-                "PyWavelets (pywt) is required for the 'wavelet' feature. "
-                "Install it with:  pip install PyWavelets"
-            )
+
         cA, (cH, cV, cD) = pywt.dwt2(im, "dmey")
+        # print(cH)
         combined = np.block([[cA, cH], [cV, cD]])
         return _rerange(combined)
  
@@ -99,162 +105,217 @@ def _extract_feature(im: np.ndarray, feature: str) -> np.ndarray:
  
  
 # Per-patch normalised mutual information
-def _patch_mi(sub_x: np.ndarray, sub_y: np.ndarray) -> float:
+def _batch_patch_mi(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """
-    Compute normalised mutual information between two (w x w) patches.
-    Matches the inner loop logic of the MATLAB FMI implementation exactly.
-    Returns a value in [0, 1].
+    Vectorized equivalent of _patch_mi applied to all patches at once.
+
+    Parameters
+    ----------
+    x : (B, L) — all patches from one feature map, flattened (column-major to match MATLAB)
+    y : (B, L) — all patches from another feature map, same layout
+
+    Returns
+    -------
+    mi : (B,) normalised mutual information for each patch pair
     """
-    # Identical patches -> perfect transfer
-    if np.array_equal(sub_x, sub_y):
-        return 1.0
- 
-    l = sub_x.size     # (2*hw + 1)^2
- 
-    # Normalise each patch to a marginal PDF
-    def _to_pdf(patch: np.ndarray) -> np.ndarray:
-        mn, mx = patch.min(), patch.max()
-        p = np.ones(l, dtype=np.float64) if mx == mn else \
-            ((patch.ravel() - mn) / (mx - mn))
-        s = p.sum()
-        return p / s if s != 0 else p
- 
-    xPdf = _to_pdf(sub_x)
-    yPdf = _to_pdf(sub_y)
- 
-    # PDF -> CDF
-    xCdf = np.cumsum(xPdf)
-    yCdf = np.cumsum(yPdf)
- 
-    # Pearson correlation between marginal PDFs
-    xTemp = xPdf - xPdf.mean()
-    yTemp = yPdf - yPdf.mean()
-    dot   = (xTemp * yTemp).sum()
-    norm  = np.sqrt((xTemp ** 2).sum() * (yTemp ** 2).sum())
-    c     = 0.0 if norm == 0 else float(dot / norm)
- 
-    # Population std-devs (index-weighted, matching MATLAB)
-    idx  = np.arange(1, l + 1, dtype=np.float64)
-    ex   = (idx       * xPdf).sum()
-    ex2  = (idx ** 2  * xPdf).sum()
-    ey   = (idx       * yPdf).sum()
-    ey2  = (idx ** 2  * yPdf).sum()
-    xSd  = np.sqrt(max(ex2 - ex ** 2, 0.0))
-    ySd  = np.sqrt(max(ey2 - ey ** 2, 0.0))
- 
-    # 2-D CDF grids (l x l)
-    xC  = xCdf[:, None]        # (l, 1) rows = i
-    yC  = yCdf[None, :]        # (1, l) cols = j
-    xCm = xCdf[:-1, None]      # (l-1, 1)  i-1 shifted
-    yCm = yCdf[None, :-1]      # (1, l-1)  j-1 shifted
- 
-    def _accum_entropy(H: float, jpdf_arr: np.ndarray) -> float:
-        """Add -p*log2(p) for every strictly positive element."""
-        pos = jpdf_arr > 0
-        if not np.any(pos):
-            return H
-        v = jpdf_arr[pos]
-        H += float(np.real((-v * np.log2(v)).sum()))
-        return H
- 
-    def _joint_entropy_upper(phi: float) -> float:
-        """Frechet upper-bound copula blend -> joint entropy."""
-        def _minFG(a, b):
-            return 0.5 * (a + b - np.abs(a - b))
- 
-        mFG   = _minFG(xC,  yC)    # (l, l)
-        mFGim = _minFG(xCm, yC)    # (l-1, l)
-        mFGjm = _minFG(xC,  yCm)   # (l, l-1)
-        mFGij = _minFG(xCm, yCm)   # (l-1, l-1)
- 
-        H = 0.0
- 
+    B, L = x.shape
+
+    # ── identical-patch shortcut (B,) bool mask ──────────────────────────────
+    identical = np.all(x == y, axis=1)
+
+    # ── per-patch normalisation → marginal PDF ──────────────────────────────
+    def _to_pdf(p: np.ndarray) -> np.ndarray:
+        mn = p.min(axis=1, keepdims=True)
+        mx = p.max(axis=1, keepdims=True)
+        flat = np.where(mx == mn, np.ones_like(p), (p - mn) / (mx - mn + EPS))
+        s = flat.sum(axis=1, keepdims=True)
+        return flat / np.where(s == 0, 1.0, s)
+
+    xPdf = _to_pdf(x)   # (B, L)
+    yPdf = _to_pdf(y)   # (B, L)
+
+    # ── CDFs ────────────────────────────────────────────────────────────────
+    xCdf = np.cumsum(xPdf, axis=1)   # (B, L)
+    yCdf = np.cumsum(yPdf, axis=1)
+
+    # ── Pearson r between marginal PDFs ─────────────────────────────────────
+    xm = xPdf - xPdf.mean(axis=1, keepdims=True)
+    ym = yPdf - yPdf.mean(axis=1, keepdims=True)
+    dot  = (xm * ym).sum(axis=1)                              # (B,)
+    norm = np.sqrt((xm**2).sum(axis=1) * (ym**2).sum(axis=1))
+    c    = np.where(norm == 0, 0.0, dot / norm)               # (B,)
+
+    # ── population std-devs (index-weighted) ────────────────────────────────
+    idx = np.arange(1, L + 1, dtype=np.float64)               # (L,)
+    ex  = (idx       * xPdf).sum(axis=1)
+    ex2 = (idx**2    * xPdf).sum(axis=1)
+    ey  = (idx       * yPdf).sum(axis=1)
+    ey2 = (idx**2    * yPdf).sum(axis=1)
+    xSd = np.sqrt(np.maximum(ex2 - ex**2, 0.0))               # (B,)
+    ySd = np.sqrt(np.maximum(ey2 - ey**2, 0.0))
+
+    # ── 2-D CDF grids broadcast-free using pre-expanded slices ───────────────
+    # xCdf[:, :, None] → (B, L, 1), yCdf[:, None, :] → (B, 1, L)
+    xC  = xCdf[:, :,  None]    # (B, L,   1)  i
+    yC  = yCdf[:, None, :]     # (B, 1,   L)  j
+    xCm = xCdf[:, :-1, None]   # (B, L-1, 1)  i-1
+    yCm = yCdf[:, None, :-1]   # (B, 1, L-1)  j-1
+    def _accum_H(jpdf: np.ndarray) -> np.ndarray:
+        """Sum -p*log2|p| over last two axes → (B,).  Mirrors _accum_entropy."""
+        
+        mask = jpdf != 0
+        out  = np.zeros(B, dtype=np.float64)
+        # safe log2: only evaluate where mask is true
+        safe = np.where(mask, np.abs(jpdf), 1.0)
+        out  = -(np.where(mask, jpdf, 0.0) * np.log2(safe)).sum(axis=(-2, -1))
+        # print(out)
+        return out
+
+    def _joint_entropy_upper_batch(phi: np.ndarray) -> np.ndarray:
+        """Fréchet upper-bound copula, batched. phi: (B,)"""
+        ph = phi[:, None, None]   # broadcast over (L, L) grids
+
+        def _min(a, b): return 0.5 * (a + b - np.abs(a - b))
+
+        mFG   = _min(xC,  yC)     # (B, L,   L  )
+        mFGim = _min(xCm, yC)     # (B, L-1, L  )
+        mFGjm = _min(xC,  yCm)    # (B, L,   L-1)
+        mFGij = _min(xCm, yCm)    # (B, L-1, L-1)
+
+        H = np.zeros(B)
+
         # (0,0) corner
-        jpdf = phi * mFG[0, 0] + (1 - phi) * xPdf[0] * yPdf[0]
-        if jpdf > 0:
-            H += float(np.real(-jpdf * np.log2(jpdf)))
- 
-        # i-boundary (i >= 1, j = 0)
-        up    = mFG[1:, 0] - mFGim[:, 0]
-        jpdf_ = phi * up + (1 - phi) * xPdf[1:] * yPdf[0]
-        H     = _accum_entropy(H, jpdf_)
- 
-        # j-boundary (i = 0, j >= 1)
-        up    = mFG[0, 1:] - mFGjm[0, :]
-        jpdf_ = phi * up + (1 - phi) * xPdf[0] * yPdf[1:]
-        H     = _accum_entropy(H, jpdf_)
- 
-        # interior (i >= 1, j >= 1)
-        up    = mFG[1:, 1:] - mFGim[:, 1:] - mFGjm[1:, :] + mFGij
-        jpdf_ = phi * up + (1 - phi) * xPdf[1:, None] * yPdf[None, 1:]
-        H     = _accum_entropy(H, jpdf_)
- 
+        jp = ph[:, 0, 0] * mFG[:, 0, 0] + (1 - phi) * xPdf[:, 0] * yPdf[:, 0]
+        pos = jp > 0
+        H[pos] += (-jp[pos] * np.log2(jp[pos])).real
+
+        # i-boundary (i>=1, j=0): shape (B, L-1)
+        up  = mFG[:, 1:, 0] - mFGim[:, :, 0]
+        jp_ = ph[:, :, 0] * up + (1 - ph[:, :, 0]) * xPdf[:, 1:] * yPdf[:, 0:1]
+        H  += _accum_H(jp_[:, :, None])[:] * 0  # placeholder — reshape to (B,L-1,1)
+
+        # easier: accumulate over axis=-1 only, keep (B, L-1) flat
+        def _H1d(arr):
+            mask = arr != 0
+            safe = np.where(mask, np.abs(arr), 1.0)
+            return -(np.where(mask, arr, 0.0) * np.log2(safe)).sum(axis=-1)
+
+        # redo with 1-D accumulation
+        H = np.zeros(B)
+        jp = mFG[:, 0, 0] * phi + (1 - phi) * xPdf[:, 0] * yPdf[:, 0]
+        pos = jp > 0
+        H[pos] += (-jp[pos] * np.log2(jp[pos]))
+
+        up   = mFG[:, 1:, 0] - mFGim[:, :, 0]               # (B, L-1)
+        jp_  = ph[:, :, 0] * up + (1-ph[:, :, 0]) * xPdf[:, 1:] * yPdf[:, :1]
+        H   += _H1d(jp_)
+
+        up   = mFG[:, 0, 1:] - mFGjm[:, 0, :]               # (B, L-1)
+        jp_  = ph[:, 0, :] * up + (1-ph[:, 0, :]) * xPdf[:, :1] * yPdf[:, 1:]
+        H   += _H1d(jp_)
+
+        up   = mFG[:,1:,1:] - mFGim[:,:,1:] - mFGjm[:,1:,:] + mFGij  # (B,L-1,L-1)
+        jp_  = ph * up + (1-ph) * xPdf[:, 1:, None] * yPdf[:, None, 1:]
+        H   += _accum_H(jp_)
+
         return H
- 
-    def _joint_entropy_lower(theta: float) -> float:
-        """Frechet lower-bound copula blend -> joint entropy."""
-        def _maxFG(a, b):
-            return 0.5 * (a + b - 1 + np.abs(a + b - 1))
- 
-        mFG   = _maxFG(xC,  yC)
-        mFGim = _maxFG(xCm, yC)
-        mFGjm = _maxFG(xC,  yCm)
-        mFGij = _maxFG(xCm, yCm)
- 
-        H = 0.0
- 
-        jpdf = theta * mFG[0, 0] + (1 - theta) * xPdf[0] * yPdf[0]
-        if jpdf > 0:
-            H += float(np.real(-jpdf * np.log2(jpdf)))
- 
-        lo    = mFG[1:, 0] - mFGim[:, 0]
-        jpdf_ = theta * lo + (1 - theta) * xPdf[1:] * yPdf[0]
-        H     = _accum_entropy(H, jpdf_)
- 
-        lo    = mFG[0, 1:] - mFGjm[0, :]
-        jpdf_ = theta * lo + (1 - theta) * xPdf[0] * yPdf[1:]
-        H     = _accum_entropy(H, jpdf_)
- 
-        lo    = mFG[1:, 1:] - mFGim[:, 1:] - mFGjm[1:, :] + mFGij
-        jpdf_ = theta * lo + (1 - theta) * xPdf[1:, None] * yPdf[None, 1:]
-        H     = _accum_entropy(H, jpdf_)
- 
+
+    def _joint_entropy_lower_batch(theta: np.ndarray) -> np.ndarray:
+        """Fréchet lower-bound copula, batched. theta: (B,)"""
+        th = theta[:, None, None]
+
+        def _max(a, b): return 0.5 * (a + b - 1 + np.abs(a + b - 1))
+
+        mFG   = _max(xC,  yC)
+        mFGim = _max(xCm, yC)
+        mFGjm = _max(xC,  yCm)
+        mFGij = _max(xCm, yCm)
+
+        def _H1d(arr):
+            mask = arr != 0
+            safe = np.where(mask, np.abs(arr), 1.0)
+            return -(np.where(mask, arr, 0.0) * np.log2(safe)).sum(axis=-1)
+
+        H = np.zeros(B)
+        jp = mFG[:, 0, 0] * theta + (1-theta) * xPdf[:, 0] * yPdf[:, 0]
+
+        nz = jp != 0
+        H[nz] += -jp[nz] * np.log2(np.abs(jp[nz]))
+
+        lo  = mFG[:, 0, 1:] - mFGjm[:, 0, :]
+        jp_ = th[:, 0, :] * lo + (1-th[:, 0, :]) * xPdf[:, :1] * yPdf[:, 1:]
+        H  += _H1d(jp_)
+
+        lo  = mFG[:, 1:, 0] - mFGim[:, :, 0]
+        jp_ = th[:, :, 0] * lo + (1-th[:, :, 0]) * xPdf[:, 1:] * yPdf[:, :1]
+        H  += _H1d(jp_)
+
+        lo  = mFG[:,1:,1:] - mFGim[:,:,1:] - mFGjm[:,1:,:] + mFGij
+        jp_ = th * lo + (1-th) * xPdf[:,1:,None] * yPdf[:,None,1:]
+        H  += _accum_H(jp_)
+
         return H
- 
-    # Compute joint entropy using the appropriate Frechet bound
-    if c >= 0:
-        if c == 0 or xSd == 0 or ySd == 0:
-            phi = 0.0
-        else:
-            covUp  = (0.5 * (xC + yC - np.abs(xC - yC)) - xC * yC).sum()
-            corrUp = covUp / (xSd * ySd)
-            phi    = float(c / corrUp) if corrUp != 0 else 0.0
-        jointEntropy = _joint_entropy_upper(phi)
- 
-    else:
-        if xSd == 0 or ySd == 0:
-            theta = 0.0
-        else:
-            covLo  = (0.5 * (xC + yC - 1 + np.abs(xC + yC - 1)) - xC * yC).sum()
-            corrLo = covLo / (xSd * ySd)
-            theta  = float(c / corrLo) if corrLo != 0 else 0.0
-        jointEntropy = _joint_entropy_lower(theta)
- 
-    # Marginal entropies
-    mx_  = xPdf > 0
-    xH   = float(-(xPdf[mx_] * np.log2(xPdf[mx_])).sum())
-    my_  = yPdf > 0
-    yH   = float(-(yPdf[my_] * np.log2(yPdf[my_])).sum())
- 
-    # Normalised MI
-    mi    = xH + yH - jointEntropy
-    denom = xH + yH
-    if mi == 0 or denom == 0:
-        return 0.0
-    return float(2.0 * mi / denom)
- 
- 
-# Main function 
+
+    # ── route each patch to upper or lower copula ────────────────────────────
+    pos_mask = c >= 0    # (B,)
+
+    # phi for positive-c patches
+    xC2d = xCdf[:, :, None]   # reuse
+    yC2d = yCdf[:, None, :]
+    def _min2(a, b): return 0.5 * (a + b - np.abs(a - b))
+    def _max2(a, b): return 0.5 * (a + b - 1 + np.abs(a + b - 1))
+
+    # ── phi (upper copula) ───────────────────────────────────────────────────────
+    covUp  = (_min2(xC2d, yC2d) - xC2d * yC2d).sum(axis=(-2, -1))
+    sd_prod = xSd * ySd
+
+    # Step 1: safe corrUp
+    corrUp = np.zeros_like(covUp)
+    valid_corr = sd_prod != 0
+    corrUp[valid_corr] = covUp[valid_corr] / sd_prod[valid_corr]
+
+    # Step 2: safe phi (match scalar logic exactly)
+    phi = np.zeros_like(c)
+    valid_phi = (c != 0) & (xSd != 0) & (ySd != 0) & (corrUp != 0)
+    phi[valid_phi] = c[valid_phi] / corrUp[valid_phi]
+
+    # ── theta (lower copula) ─────────────────────────────────────────────────────
+    covLo  = (_max2(xC2d, yC2d) - xC2d * yC2d).sum(axis=(-2, -1))
+    sd_prod = xSd * ySd
+        
+    corrLo = np.zeros_like(covLo)
+    valid_corr = sd_prod != 0
+    corrLo[valid_corr] = covLo[valid_corr] / sd_prod[valid_corr]    
+    theta = np.zeros_like(c)
+    
+    valid_theta = (xSd != 0) & (ySd != 0) & (corrLo != 0)
+    theta[valid_theta] = c[valid_theta] / corrLo[valid_theta]
+    # compute both branches, select by mask (avoids conditionals over B)
+    H_upper = _joint_entropy_upper_batch(phi)
+    H_lower = _joint_entropy_lower_batch(theta)
+    jointH  = np.where(pos_mask, H_upper, H_lower)   # (B,)
+
+    # ── marginal entropies ───────────────────────────────────────────────────
+    def _marginal_H(pdf):
+        mask = pdf > 0
+        safe = np.where(mask, pdf, 1.0)
+        return -(np.where(mask, pdf, 0.0) * np.log2(safe)).sum(axis=1)   # (B,)
+
+    xH = _marginal_H(xPdf)
+    yH = _marginal_H(yPdf)
+
+    # ── normalised MI ─────────────────────────────────────────────────────────────
+    mi_val = xH + yH - jointH
+    denom  = xH + yH
+    nmi    = np.where(
+        (mi_val == 0) | (denom == 0),
+        0.0,
+        mi_val / np.where(denom == 0, 1.0, denom) * 2.0
+    )
+    # apply identical-patch override
+    nmi = np.where(identical, 1.0, nmi)
+    return nmi
+
 def fmi(
     ima: np.ndarray,
     imb: np.ndarray,
@@ -262,68 +323,54 @@ def fmi(
     feature: str = "none",
     w: int = 3,
 ) -> float:
-    """
-    Compute the Feature Mutual Information (FMI) score for image fusion.
- 
-    Parameters
-    ----------
-    ima     : First source image  (H x W), uint8 or float.
-    imb     : Second source image (H x W), same shape as ima.
-    imf     : Fused image         (H x W), same shape as ima.
-    feature : Feature extraction — one of:
-                'none'      raw pixels (no extraction)
-                'gradient'  x-direction central-difference gradient
-                'edge'      Sobel magnitude                 [default]
-                'dct'       2-D orthonormal DCT
-                'wavelet'   discrete Meyer wavelet (requires PyWavelets)
-    w       : Window size passed exactly as in MATLAB (default 3).
-              Internally converted to half-width: hw = floor(w/2).
- 
-    Returns
-    -------
-    nfmi : float
-        Normalised Feature Mutual Information in [0, 1].
-        Higher means more source information was preserved in the fused image.
- 
-    Examples
-    --------
-    >>> import numpy as np
-    >>> A = np.random.rand(128, 128) * 255
-    >>> B = np.random.rand(128, 128) * 255
-    >>> F = 0.5 * A + 0.5 * B
-    >>> score = FMI_metrics(A, B, F, feature='edge', w=3)
-    >>> print(f"FMI = {score:.4f}")
-    """
-    if ima.shape != imb.shape:
-        raise ValueError("Source images must have the same shape.")
-    if ima.shape != imf.shape:
-        raise ValueError("Source and fused images must have the same shape.")
- 
+    if ima.shape != imb.shape or ima.shape != imf.shape:
+        raise ValueError("All images must have the same shape.")
+
     ima = ima.astype(np.float64)
     imb = imb.astype(np.float64)
     imf = imf.astype(np.float64)
- 
+
     aFeat = _extract_feature(ima, feature)
     bFeat = _extract_feature(imb, feature)
     fFeat = _extract_feature(imf, feature)
- 
-    # MATLAB does:  w = floor(w/2)  before the sliding-window loop
-    hw = int(np.floor(w / 2))
- 
-    m, n = aFeat.shape
-    fmi_map = np.ones((m - 2 * hw, n - 2 * hw), dtype=np.float64)
- 
-    for p in range(hw, m - hw):
-        for q in range(hw, n - hw):
-            aSub = aFeat[p - hw: p + hw + 1, q - hw: q + hw + 1]
-            bSub = bFeat[p - hw: p + hw + 1, q - hw: q + hw + 1]
-            fSub = fFeat[p - hw: p + hw + 1, q - hw: q + hw + 1]
- 
-            fmi_af = _patch_mi(aSub.copy(), fSub.copy())
-            fmi_bf = _patch_mi(bSub.copy(), fSub.copy())
- 
-            fmi_map[p - hw, q - hw] = (fmi_af + fmi_bf) / 2.0
- 
+
+    # Guard: all features must be 2D arrays after extraction
+    for name, arr in [("aFeat", aFeat), ("bFeat", bFeat), ("fFeat", fFeat)]:
+        if arr.ndim != 2:
+            raise ValueError(
+                f"{name} has ndim={arr.ndim} after feature='{feature}' extraction; "
+                f"expected 2D. Shape: {arr.shape}"
+            )
+
+    hw    = int(np.floor(w / 2))
+    wsize = 2 * hw + 1
+
+    # view_as_windows: (M-2hw, N-2hw, wsize, wsize)
+    # skimage's view_as_windows is safer than numpy's sliding_window_view
+    # for non-contiguous or oddly-strided arrays (e.g. wavelet output)
+    aFeat = np.ascontiguousarray(aFeat)
+    bFeat = np.ascontiguousarray(bFeat)
+    fFeat = np.ascontiguousarray(fFeat)
+
+    aW = view_as_windows(aFeat, (wsize, wsize))   # (M, N, wsize, wsize)
+    bW = view_as_windows(bFeat, (wsize, wsize))
+    fW = view_as_windows(fFeat, (wsize, wsize))
+
+    M, N = aW.shape[:2]
+    B    = M * N
+
+    def _prep(W):
+        # (M, N, wsize, wsize) → (B, wsize*wsize), column-major patch flatten
+        return W.reshape(B, wsize, wsize).reshape(B, wsize * wsize, order='F')
+
+    aP = _prep(aW)
+    bP = _prep(bW)
+    fP = _prep(fW)
+
+    fmi_af = _batch_patch_mi(aP, fP)
+    fmi_bf = _batch_patch_mi(bP, fP)
+
+    fmi_map = ((fmi_af + fmi_bf) / 2.0).reshape(M, N)
     return float(np.nanmean(fmi_map))
 
 # endregion
@@ -347,27 +394,52 @@ def scd(A: np.ndarray, B: np.ndarray, F: np.ndarray) -> float:
 
 if __name__ == "__main__":
     import cv2
+    from PIL import Image
+    from time import time
     def load_gray(path):
-        return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        return np.array(Image.open(path).convert("L"))
     A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
     B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
     F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
     # A = np.array([
-    #     [80, 20, 85],
-    #     [75, 25, 78],
-    #     [80, 22, 88]
+    #     [82, 40, 20, 85],
+    #     [80, 38, 22, 83],
+    #     [78, 36, 24, 81],
+    #     [80, 37, 23, 82],
     # ], dtype=np.uint8)
 
     # B = np.array([
-    #     [30, 110, 35],
-    #     [28, 120, 32],
-    #     [26, 115, 30]
+    #     [28, 90, 120, 30],
+    #     [26, 88, 125, 28],
+    #     [25, 85, 130, 27],
+    #     [26, 87, 128, 28],
     # ], dtype=np.uint8)
 
     # F = np.array([
-    #     [58, 70, 60],
-    #     [55, 78, 57],
-    #     [62, 75, 61]
+    #     [55, 65, 70, 58],
+    #     [53, 63, 74, 56],
+    #     [52, 60, 78, 55],
+    #     [53, 62, 76, 56],
     # ], dtype=np.uint8)
 
+
+    start = time()    
+    
+    fmi_pixel = fmi(A, B, F, feature='none', w=3)
+    print(f"FMI - Pixel: {fmi_pixel:.4f}")
+
+    fmi_gradient = fmi(A, B, F, feature='gradient', w=3)
+    print(f"FMI - Gradient: {fmi_gradient:.4f}")
+    
+    fmi_edge = fmi(A, B, F, feature='edge', w=3)
+    print(f"FMI - Edge: {fmi_edge:.4f}")
+    
+    fmi_dct = fmi(A, B, F, feature='dct', w=3)
+    print(f"FMI - DCT: {fmi_dct:.4f}")
+    
+    fmi_wavelet = fmi(A, B, F, feature='wavelet', w=3)
+    print(f"FMI - Wavelet: {fmi_wavelet:.4f}")
+
+    end = time()    
+    print("Time:", end - start)
     # print("SCD:", scd(A, B, F))

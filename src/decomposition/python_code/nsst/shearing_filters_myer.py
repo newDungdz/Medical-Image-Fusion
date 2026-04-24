@@ -2,9 +2,7 @@
 import numpy as np
 from numpy.fft import ifft2, fftshift
 from processing_ultis import stats
-# =============================================================================
-# SECTION 2 — MEYER WINDOW
-# =============================================================================
+
 
 def meyer_wind(x):
     """
@@ -38,9 +36,6 @@ def meyer_wind(x):
         return 0.0
 
 
-# =============================================================================
-# SECTION 3 — WINDOWING (Meyer bandpass decomposition)
-# =============================================================================
 def windowing(x, L):
     """
     Decompose signal x into L Meyer-windowed bandpass channels.
@@ -79,9 +74,6 @@ def windowing(x, L):
     return y
 
 
-# =============================================================================
-# SECTION 4 — PSEUDO-POLAR GRID COORDINATES
-# =============================================================================
 
 def _avg_pol(L, x1, y1, x2, y2):
     """
@@ -192,10 +184,6 @@ def gen_x_y_cordinates(n):
     return x1n, y1n, x2n, y2n, D
 
 
-# =============================================================================
-# SECTION 5 — RECONSTRUCT FROM POLAR SLICES
-# =============================================================================
-
 def rec_from_pol(l, n, x1, y1, x2, y2, D):
     """
     Re-assemble radial (pseudo-polar) slices into a Cartesian n × n block.
@@ -230,10 +218,6 @@ def rec_from_pol(l, n, x1, y1, x2, y2, D):
     C = C / D
     return C
 
-
-# =============================================================================
-# SECTION 6 — SHEARING FILTERS (Meyer directional filters)
-# =============================================================================
 
 def shearing_filters_myer(n1, level):
     """
@@ -275,9 +259,41 @@ def shearing_filters_myer(n1, level):
     return w_s
 
 if __name__ == "__main__":
-    shear = shearing_filters_myer(16, 2)
-    for k in range(shear.shape[2]):
-        print(
-            k,
-            np.linalg.norm(shear[:, :, k])
-        )
+    import matplotlib.pyplot as plt
+
+    shear = shearing_filters_myer(16, 1)
+
+    n_dirs = shear.shape[2]
+
+    # =============================
+    # 1. SPATIAL DOMAIN
+    # =============================
+    plt.figure(figsize=(12, 3))
+    for k in range(n_dirs):
+        plt.subplot(1, n_dirs, k + 1)
+        plt.imshow(shear[:, :, k], cmap='gray')
+        plt.title(f"Dir {k}\n(spatial)")
+        plt.axis('off')
+
+    plt.suptitle("Shear Filters — Spatial Domain")
+    plt.tight_layout()
+    plt.show()
+
+    # =============================
+    # 2. FREQUENCY
+    # =============================
+    plt.figure(figsize=(12, 3))
+    for k in range(n_dirs):
+        f = shear[:, :, k]
+
+        freq = np.fft.fftshift(np.fft.fft2(f))   # NO padding
+        mag = np.log1p(np.abs(freq))
+
+        plt.subplot(1, n_dirs, k + 1)
+        plt.imshow(mag, cmap='gray', interpolation='nearest')
+        plt.title(f"Dir {k}\n(freq real)")
+        plt.axis('off')
+
+    plt.suptitle("Shear Filters — Frequency")
+    plt.tight_layout()
+    plt.show()

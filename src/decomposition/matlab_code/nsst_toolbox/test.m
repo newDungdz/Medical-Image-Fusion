@@ -19,9 +19,41 @@ img = double(img);
 params.dcomp = [2, 2, 2];
 params.dsize = [16, 16, 16];
 
-lpfilt = 'maxflat';
+lpfilt = '9-7';
 
 
-[dst, shear_f] = nsst_dec1e(img, params, lpfilt);
+A = [
+    1 2 3 4;
+    4 5 6 7;
+    7 8 9 10;
+    10 11 12 13
+];
+
+K = [
+    1 2;
+    3 4
+];
+
+disp('Input A:');
+disp(A);
+
+disp('Kernel K:');
+disp(K);
+
+% FULL
+full_mat = conv2(A, K, 'full');
+disp('[MATLAB] FULL:');
+disp(full_mat);
+
+% SAME
+same_mat = conv2(A, K, 'same');
+disp('[MATLAB] SAME:');
+disp(same_mat);
+
+% VALID
+valid_mat = conv2(A, K, 'valid');
+disp('[MATLAB] VALID:');
+disp(valid_mat);
+% [dst, shear_f] = nsst_dec1e(img, params, lpfilt);
 
 % stats(wind, "windowing output");

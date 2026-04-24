@@ -1,8 +1,4 @@
 import numpy as np
-from scipy import signal
-from scipy.ndimage import sobel, convolve, uniform_filter
-from numpy.lib.stride_tricks import sliding_window_view
-from scipy.ndimage import sobel
 
 # ──────────────────────────────────────────────
 # CC  –  Correlation Coefficient

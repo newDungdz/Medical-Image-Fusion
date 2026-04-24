@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from atrousfilters import atrousfilters
 from processing_ultis import symext, upsample2df, atrousc
@@ -109,36 +110,14 @@ def nsst_rec1(dst, lpfilt):
 
 if __name__ == "__main__":
     from processing_ultis import stats
+    import scipy.io as sio
 
-    # ── Hand-crafted 60×60 smooth gradient with a single spike ───────────────
-    N = 60
-    img = np.zeros((N, N))
-    for i in range(N):
-        for j in range(N):
-            img[i, j] = i + j
-    img[N//2, N//2] += 10
+    data = sio.loadmat('nsst_data.mat')
 
-    stats(img, "original")
-    
-    print("=== atrousrec ===")
-
-    y1 = [img / 2, img / 2]
-    r1 = atrousrec(y1, 'pyr')
-    stats(r1, "1-level")
-
-    y2 = [img / 4, img / 4, img / 2]
-    r2 = atrousrec(y2, 'pyr')
-    stats(r2, "2-level")
-
-    print("\n=== nsst_rec1 ===")
-
-    band1 = np.stack([img / 4, np.rot90(img) / 4], axis=2)
-    dst1  = [img / 2, band1]
-    s1    = nsst_rec1(dst1, 'pyr')
-    stats(s1, "1-level 2-dir")
-
-    band_c = np.stack([img * np.cos(d * np.pi / 4) * 0.2 for d in range(4)], axis=2)
-    band_f = np.stack([img * np.sin(d * np.pi / 4) * 0.1 for d in range(4)], axis=2)
-    dst2   = [img * 0.1, band_c, band_f]
-    s2     = nsst_rec1(dst2, 'pyr')
-    stats(s2, "2-level 4-dir")
+    dst = data['dst']
+    dst = [dst[0, i] for i in range(dst.shape[1])]
+    rec = nsst_rec1(dst, 'maxflat')
+    stats(rec, "reconstructed")
+    img = cv2.imread("test.png", cv2.IMREAD_GRAYSCALE)
+    error = np.linalg.norm(img - rec) / np.linalg.norm(img)
+    print(f"Relative reconstruction error: {error:.2e}")

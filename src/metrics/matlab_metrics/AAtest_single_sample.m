@@ -69,7 +69,6 @@ fprintf('Image size: %dx%d\n', s1, s2);
 % =========================================================
 % 1. GLOBAL METRICS (NO sliding window) → ALWAYS SAFE
 % =========================================================
-fprintf('\n=== GLOBAL METRICS ===\n');
 
 EN   = EN_metrics(img_f_int);
 OCE  = OCE_metrics(img1_float, img2_float, img_f_float);
@@ -101,10 +100,10 @@ fprintf('Peak Signal-to-Noise Ratio (PSNR): %f\n', PSNR);
 fprintf('Entropy (EN): %f\n', EN);
 fprintf('Mutual Information (MI): %f\n', MI);
 
-% FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float);
-% FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
-% FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
-% FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
+FMI_pixel = FMI_metrics(img1_float, img2_float, img_f_float, 'none');
+FMI_dct   = FMI_metrics(img1_float, img2_float, img_f_float, 'dct');
+FMI_w     = FMI_metrics(img1_float, img2_float, img_f_float, 'wavelet');
+FMI_edge  = FMI_metrics(img1_float, img2_float, img_f_float, 'edge');
 
 % Keep only FMI variants that exist in your Python structure
 fprintf('Feature Mutual Information (FMI_pixel): %.6f\n', FMI_pixel);
@@ -115,6 +114,23 @@ fprintf('Feature Mutual Information (FMI_edge): %.6f\n', FMI_edge);
 fprintf('Sum of Correlations of Differences (SCD): %f\n', SCD);
 
 % =========================================================
+% IMAGE METRICS
+% =========================================================
+
+% ── IMAGE ─────────────────────────────────────────────────────
+QABF_fast = QABF_metrics(img1_float, img2_float, img_f_float);
+[QABF, LABF, NABF, NABF1] = Petrovic_metrics(img_f_float, img1_float, img2_float);
+SF   = SF_metrics(img_f_float);
+disp("Petrovic Metrics:")
+fprintf('\nQABF_fast: %f\n', QABF_fast);
+fprintf('QABF: %f\n', QABF);
+fprintf('LABF: %f\n', LABF);
+fprintf('NABF: %f\n', NABF);
+fprintf('NABF1: %f\n', NABF1);
+fprintf('Spatial Frequency: %f\n', SF);
+
+
+% =========================================================
 % SMALL-NEIGHBOR METRICS (compute first)
 % =========================================================
 try
@@ -123,7 +139,7 @@ try
     SSIM = SSIM_metrics(img1_float, img2_float, img_f_float);
     [MEF_SSIM, ~, ~] = MEF_SSIM_metrics(imgSeq, img_f_float);
 
-    VIF  = VIF_metrics(img1_float, img_f_float);
+    VIF  = VIF_metrics(img1_float, img_f_float) + VIF_metrics(img2_float, img_f_float);
     VIF_full = vifvec(img_f_float, img1_float);
     VIFF = VIFF_metrics(img1_float, img2_float, img_f_float);
 

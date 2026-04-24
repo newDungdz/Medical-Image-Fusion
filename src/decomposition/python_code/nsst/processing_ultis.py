@@ -105,6 +105,18 @@ def atrousc(signal, h, M):
     # Match C code's output crop: skip first (M0-1) rows and (M3-1) cols
     return result[M0-1:, M3-1:]
 
+
+def conv2_same_matlab(x, k):
+    """
+    Simulate MATLAB's conv2 with 'same' output size by performing a full convolution
+    and then cropping the result to match the input size.
+    """
+    full = convolve2d(x, k, mode='full')
+    kh, kw = k.shape
+    h, w = x.shape
+    return full[kh//2:kh//2+h, kw//2:kw//2+w]
+
+
 def stats(arr, label):
     a = np.asarray(arr, dtype=float)
     print(f"  [{label}] shape={a.shape}  min={a.min():.4f}  max={a.max():.4f}  mean={a.mean():.4f}  sum={np.sum(a**2):.4f}")

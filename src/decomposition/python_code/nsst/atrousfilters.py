@@ -198,3 +198,55 @@ def atrousfilters(fname):
         raise ValueError(f"Unknown filter type '{fname}'. Available options: '9-7', 'maxflat', 'pyr', 'pyrexc'.")
 
     return h0, h1, g0, g1
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    filter_names = ['9-7', 'maxflat', 'pyr', 'pyrexc']
+
+    for fname in filter_names:
+        h0, h1, g0, g1 = atrousfilters(fname)
+
+        filt_dict = {
+            "h0 (analysis lowpass)": h0,
+            "h1 (analysis highpass)": h1,
+            "g0 (synthesis lowpass)": g0,
+            "g1 (synthesis highpass)": g1,
+        }
+
+        # -----------------------------
+        # FIGURE 1: TRUE SIZE (NO PADDING)
+        # -----------------------------
+        plt.figure(figsize=(10, 8))
+
+        for i, (name, f) in enumerate(filt_dict.items()):
+            freq = np.fft.fftshift(np.fft.fft2(f))  # NO padding
+            mag = np.log1p(np.abs(freq))
+
+            plt.subplot(2, 2, i + 1)
+            plt.imshow(mag, cmap='gray', interpolation='nearest')
+            plt.title(f"{name}\nshape={f.shape}")
+            plt.axis('off')
+
+        plt.suptitle(f"{fname} — Frequency (REAL size, no padding)")
+        plt.tight_layout()
+        plt.show()
+
+        # -----------------------------
+        # FIGURE 2: PADDED (FOR ANALYSIS)
+        # -----------------------------
+        plt.figure(figsize=(10, 8))
+
+        for i, (name, f) in enumerate(filt_dict.items()):
+            freq = np.fft.fftshift(np.fft.fft2(f, s=(64, 64)))  # padded
+            mag = np.log1p(np.abs(freq))
+
+            plt.subplot(2, 2, i + 1)
+            plt.imshow(mag, cmap='gray')
+            plt.title(name)
+            plt.axis('off')
+
+        plt.suptitle(f"{fname} — Frequency (padded 64×64)")
+        plt.tight_layout()
+        plt.show()

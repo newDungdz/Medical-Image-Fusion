@@ -24,29 +24,20 @@ stats = @(x, name) fprintf([ ...
 % -----------------------------
 % Decomposition
 % -----------------------------
+% -----------------------------
+% Decomposition (timed)
+% -----------------------------
+tic;
 [dst, shear_f] = nsst_dec1e(img, params, lpfilt);
-
-stats(img, '[original]');
-stats(dst{1}, '[dst{1} - lowpass]');
-
-count = 1;
-for i = 2:length(dst)
-    band = dst{i};
-    for d = 1:size(band,3)
-        stats(band(:,:,d), sprintf('[dst %d dir %d]', count, d));
-    end
-    count = count + 1;
-end
+t_dec = toc;
+fprintf('Decomposition time: %.6f seconds\n', t_dec);
 
 % -----------------------------
-% Reconstruction
+% Reconstruction (timed)
 % -----------------------------
+tic;
 rec = nsst_rec1(dst, lpfilt);
-
-stats(rec, '[reconstructed]');
-
-% -----------------------------
-% Error
-% -----------------------------
-error = norm(img(:) - rec(:)) / norm(img(:));
-fprintf('Relative reconstruction error: %.6e\n', error);
+t_rec = toc;
+fprintf('Reconstruction time: %.6f seconds\n', t_rec);
+psnr = 10 * log10(255^2 / mean((img(:) - rec(:)).^2));
+fprintf('PSNR between original and reconstructed image: %.2f dB\n', psnr);

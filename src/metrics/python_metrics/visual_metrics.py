@@ -1,20 +1,11 @@
 import numpy as np
-from scipy import signal
-from scipy.ndimage import sobel, convolve, uniform_filter
-from numpy.lib.stride_tricks import sliding_window_view
-from scipy.ndimage import sobel
 from scipy.ndimage import convolve
 from skimage import color
+from scipy.signal import correlate2d
 
-
-# # ── Helper: 2-D 'valid' convolution (replicates MATLAB filter2 'valid') ───────
-def _conv_valid(img: np.ndarray, win: np.ndarray) -> np.ndarray:
-    """Correlate img with win using 'valid' border handling (no padding)."""
-    from scipy.signal import correlate2d
-    return correlate2d(img, win, mode='valid')
 
 # ──────────────────────────────────────────────
-# VIF  –  Visual Information Fidelity (fixed)
+# VIF  –  Visual Information Fidelity
 # ──────────────────────────────────────────────
 def vif(ref: np.ndarray, dist: np.ndarray) -> float:
     """
@@ -53,20 +44,20 @@ def vif(ref: np.ndarray, dist: np.ndarray) -> float:
         # ── 2. Pre-filter + subsample for scales 2-4 (matches MATLAB) ────────
         #      MATLAB: filter2(win, img, 'valid')  then  img(1:2:end, 1:2:end)
         if scale > 1:
-            ref  = _conv_valid(ref,  win)[::2, ::2]
-            dist = _conv_valid(dist, win)[::2, ::2]
+            ref  = correlate2d(ref,  win, mode='valid')[::2, ::2]
+            dist = correlate2d(dist, win, mode='valid')[::2, ::2]
 
         # ── 3. Local statistics via 'valid' convolution ───────────────────────
-        mu1     = _conv_valid(ref,       win)
-        mu2     = _conv_valid(dist,      win)
+        mu1     = correlate2d(ref, win, mode='valid')
+        mu2     = correlate2d(dist,win, mode='valid')
 
         mu1_sq  = mu1 * mu1
         mu2_sq  = mu2 * mu2
         mu1_mu2 = mu1 * mu2
 
-        sigma1_sq = _conv_valid(ref  * ref,  win) - mu1_sq
-        sigma2_sq = _conv_valid(dist * dist, win) - mu2_sq
-        sigma12   = _conv_valid(ref  * dist, win) - mu1_mu2
+        sigma1_sq = correlate2d(ref  * ref,  win, mode='valid') - mu1_sq
+        sigma2_sq = correlate2d(dist * dist, win, mode='valid') - mu2_sq
+        sigma12   = correlate2d(ref  * dist, win, mode='valid') - mu1_mu2
 
         # Clamp negative variances (numerical noise)
         sigma1_sq = np.maximum(sigma1_sq, 0)
@@ -310,3 +301,14 @@ def _com_vid_vind_g(
 
     return num_list, den_list, g_list
 
+if __name__ == "__main__":
+    from PIL import Image
+    def load_gray(path):
+        return np.array(Image.open(path).convert("L"))
+    # A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
+    B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
+    F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
+    
+    vif_val = vif(B, F)
+    
+    print(vif_val)
