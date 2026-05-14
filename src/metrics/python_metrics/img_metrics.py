@@ -83,11 +83,21 @@ def qabf(pA, pB, pF):
         return np.flip(arr)
 
     # 相当于matlab的Conv2
-    def convolution(k, data):
+    def convolution_zero_pad(k, data):
         k = flip180(k)
         data = np.pad(data, ((1, 1), (1, 1)), 'constant', constant_values=(0, 0))
         img_new = convolve2d(data, k, mode='valid')
         return img_new
+
+    def convolution(x, k):
+        """
+        Simulate MATLAB's conv2 with 'same' output size by performing a full convolution
+        and then cropping the result to match the input size.
+        """
+        full = convolve2d(x, k, mode='full')
+        kh, kw = k.shape
+        h, w = x.shape
+        return full[kh//2:kh//2+h, kw//2:kw//2+w]
 
     def getArray(img):
         SAx = convolution(h3, img)

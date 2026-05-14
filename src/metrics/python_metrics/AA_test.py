@@ -65,13 +65,15 @@ print("Peak Signal-to-Noise Ratio (PSNR): %.6f" % psnr_f(A, B, F))
 # =========================================================
 print("\nEntropy (EN): %.6f" % en(F))
 print("Mutual Information (MI): %.6f" % mi(A, B, F))
+print("Nonlinear Correlation Information Entropy (NCIE): %.6f" % ncie(A, B, F))
+print("Sum of the Correlations of Differences (SCD): %.6f" % scd(A, B, F))
+
 
 print("Feature Mutual Information (FMI_pixel): %.6f" % fmi(A, B, F))
 print("Feature Mutual Information (FMI_dct): %.6f" % fmi(A, B, F, feature="dct"))
 print("Feature Mutual Information (FMI_wavelet): %.6f" % fmi(A, B, F, feature="wavelet"))
 print("Feature Mutual Information (FMI_edge): %.6f" % fmi(A, B, F, feature="edge"))
 
-print("Sum of the Correlations of Differences (SCD): %.6f" % scd(A, B, F))
 
 # =========================================================
 # IMAGE METRICS

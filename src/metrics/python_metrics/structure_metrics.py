@@ -405,7 +405,6 @@ def ssim_index(
     return mssim, ssim_map, sigma1_sq, sigma2_sq
 
 
-
 # ──────────────────────────────────────────────
 # MS_SSIM  –  Multi-Scale SSIM for MEF
 # ──────────────────────────────────────────────
@@ -531,7 +530,6 @@ def _mef_ssim(seq, fi, wsize=11, K=0.03):
     qmap = (2 * s12 + C) / (s1 + s2 + C)         # (B,)
 
     return qmap.mean()
-
 
 def _downsample(arr):
     """
@@ -684,15 +682,19 @@ if __name__ == "__main__":
     def load_gray(path):
         return np.array(Image.open(path).convert("L"))
     import time
-    A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
-    B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
-    F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
+    # A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
+    # B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
+    # F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
 
-    start = time.time()
+    N = 11
     
-    ms_ssim_value = ms_ssim(np.stack([A, B], axis=2), F)
-    
-    end = time.time()
-    
-    print(ms_ssim_value)
-    print("Time:", end - start)
+    A = np.random.randint(0, 255, (N, N))
+    B= np.random.randint(0, 255, (N, N))
+    F = np.random.randint(0, 255, (N, N))
+
+    # print("\nStructural Similarity (SSIM): %.6f" % (0.5 * ssim(A, F) + 0.5 * ssim(B, F)))
+    # print("Multi-Scale Structural Similarity (MS-SSIM): %.6f" % ms_ssim(np.stack([A, B], axis=2), F))
+    print("Peilla metrics:")
+    print("     Q:",piella_metrics(A, B, F, sw=1))   # basic
+    print("     Qw:", piella_metrics(A, B, F, sw=2))   # weighted
+    print("     Qe:", piella_metrics(A, B, F, sw=3))   # edge-dependent)

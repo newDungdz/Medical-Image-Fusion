@@ -47,6 +47,115 @@ def mi(A: np.ndarray, B: np.ndarray, F: np.ndarray, grey_level: int = 256) -> fl
     return float(mifa + mifb)
 
 # ──────────────────────────────────────────────
+# ! NCIE - Nonlinear Correlation Information Entropy
+# ──────────────────────────────────────────────
+#region NCIE - Nonlinear Correlation Information Entropy
+
+def ncie(im1, im2, fim):
+    """
+    NCIE (Nonlinear Correlation Information Entropy) metric for image fusion.
+    
+    Parameters:
+        im1  : First input image (numpy array)
+        im2  : Second input image (numpy array)
+        fim  : Fused image (numpy array)
+    
+    Returns:
+        res  : NCIE metric value
+    
+    Reference: Performance evaluation of image fusion techniques, Chapter 19,
+               pp.469-492, in Image Fusion: Algorithms and Applications, by Qiang Wang
+    """
+    im1 = _normalize(im1)
+    im2 = _normalize(im2)
+    fim = _normalize(fim)
+
+    b = 256
+    K = 3
+
+    NCCxy = _NCC(im1, im2)
+    NCCxf = _NCC(im1, fim)
+    NCCyf = _NCC(im2, fim)
+
+    R = np.array([
+        [1,      NCCxy, NCCxf],
+        [NCCxy,  1,     NCCyf],
+        [NCCxf,  NCCyf, 1    ]
+    ])
+
+    eigenvalues = np.linalg.eigvals(R)
+
+    # HR calculation
+    HR = np.sum(eigenvalues * np.log2(eigenvalues / K) / K)
+    HR = -HR / np.log2(b)
+
+    NCIE = 1 - HR
+    return NCIE.real  # eigenvalues are real for symmetric matrix, but cast just in case
+
+
+def _NCC(im1, im2):
+    """
+    NCC (Nonlinear Correlation Coefficient) between two images.
+    Similar to mutual information but normalized differently.
+    
+    Parameters:
+        im1 : First image, values in range [0, 255]
+        im2 : Second image, values in range [0, 255]
+    
+    Returns:
+        res : NCC value
+    """
+    im1 = im1.astype(np.float64)
+    im2 = im2.astype(np.float64)
+
+    N = 256
+    b = 256
+
+    # Joint histogram using numpy for efficiency
+    h, _, _ = np.histogram2d(
+        im1.ravel(), im2.ravel(),
+        bins=N, range=[[0, N], [0, N]]
+    )
+
+    # Normalize to probability
+    h = h / h.sum()
+
+    im1_marg = h.sum(axis=0)   # marginal for im1 (sum columns)
+    im2_marg = h.sum(axis=1)   # marginal for im2 (sum rows)
+
+    # Entropy calculations (safe log: 0*log(0) = 0)
+    H_x = -np.sum(im1_marg * np.log2(im1_marg + (im1_marg == 0)))
+    H_y = -np.sum(im2_marg * np.log2(im2_marg + (im2_marg == 0)))
+    H_xy = -np.sum(h * np.log2(h + (h == 0)))
+
+    H_x  /= np.log2(b)
+    H_y  /= np.log2(b)
+    H_xy /= np.log2(b)
+
+    return H_x + H_y - H_xy
+
+
+def _normalize(data):
+    """
+    Normalize image data to [0, 255] integer range.
+    
+    Parameters:
+        data : Input image (numpy array)
+    
+    Returns:
+        Normalized image rounded to integers in [0, 255]
+    """
+    data = data.astype(np.float64)
+    d_max = data.max()
+    d_min = data.min()
+
+    if d_max == 0 and d_min == 0:
+        return data
+
+    normalized = (data - d_min) / (d_max - d_min)
+    return np.round(normalized * 255)
+
+# ──────────────────────────────────────────────
 # ! FMI  –  Feature Mutual Information 
 # ──────────────────────────────────────────────
 #region FMI  –  Feature Mutual Information
@@ -401,45 +510,23 @@ if __name__ == "__main__":
     A = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/MRI/4010.png')
     B = load_gray('data/AANLIB/MyDatasets/SPECT-MRI/test/SPECT/4010.png')
     F = load_gray('data/Fused_results/SPECT-MRI/ASFE-Fusion/4010.png')
-    # A = np.array([
-    #     [82, 40, 20, 85],
-    #     [80, 38, 22, 83],
-    #     [78, 36, 24, 81],
-    #     [80, 37, 23, 82],
-    # ], dtype=np.uint8)
+    I_1 = np.array([
+        [80, 20, 85],
+        [75, 25, 78],
+        [80, 22, 88]
+    ], dtype=np.float64)
 
-    # B = np.array([
-    #     [28, 90, 120, 30],
-    #     [26, 88, 125, 28],
-    #     [25, 85, 130, 27],
-    #     [26, 87, 128, 28],
-    # ], dtype=np.uint8)
+    I_2 = np.array([
+        [30, 110, 35],
+        [28, 120, 32],
+        [26, 115, 30]
+    ], dtype=np.float64)
 
-    # F = np.array([
-    #     [55, 65, 70, 58],
-    #     [53, 63, 74, 56],
-    #     [52, 60, 78, 55],
-    #     [53, 62, 76, 56],
-    # ], dtype=np.uint8)
+    I_F = np.array([
+        [58, 70, 60],
+        [55, 78, 57],
+        [62, 75, 61]
+    ], dtype=np.float64)
+    print(ncie(I_1, I_2, I_F))
 
-
-    start = time()    
-    
-    fmi_pixel = fmi(A, B, F, feature='none', w=3)
-    print(f"FMI - Pixel: {fmi_pixel:.4f}")
-
-    fmi_gradient = fmi(A, B, F, feature='gradient', w=3)
-    print(f"FMI - Gradient: {fmi_gradient:.4f}")
-    
-    fmi_edge = fmi(A, B, F, feature='edge', w=3)
-    print(f"FMI - Edge: {fmi_edge:.4f}")
-    
-    fmi_dct = fmi(A, B, F, feature='dct', w=3)
-    print(f"FMI - DCT: {fmi_dct:.4f}")
-    
-    fmi_wavelet = fmi(A, B, F, feature='wavelet', w=3)
-    print(f"FMI - Wavelet: {fmi_wavelet:.4f}")
-
-    end = time()    
-    print("Time:", end - start)
     # print("SCD:", scd(A, B, F))

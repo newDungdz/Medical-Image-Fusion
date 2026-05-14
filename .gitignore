@@ -1,7 +1,7 @@
 /data/ADNI/raw_data
 /MRI
 /resources
-
+/data/research_paper
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
