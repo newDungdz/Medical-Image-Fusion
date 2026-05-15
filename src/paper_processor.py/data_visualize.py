@@ -5,7 +5,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-DATA_PATH   = "data/research_paper/extracted_info/all_papers_structured_raw_v2.json"
+DATA_PATH   = "data/research_paper/usable_info/all_papers_structured.json"
 
 # Supports dot-notation for nested fields, including array-of-objects subfields.
 # Examples:
@@ -15,7 +15,7 @@ DATA_PATH   = "data/research_paper/extracted_info/all_papers_structured_raw_v2.j
 #   "experiment_setup.compared_methods.name"
 #   "experiment_setup.evaluation_metrics.canonical_name"
 #   "fusion_modalities"
-FIELD       = "year"
+FIELD       = "experiment_setup.evaluation_metrics.canonical_name"
 
 # Top-level scalar field to group bars by, or None for no grouping.
 # Example: "year"
@@ -93,18 +93,13 @@ with open(DATA_PATH, "r", encoding="utf-8") as f:
 if GROUP_BY:
     group_value: dict[str, Counter] = defaultdict(Counter)
     for entry in data:
-        group = entry.get(GROUP_BY)
-        if group is None:
-            # Also check one level deep (e.g. entry["metadata"]["year"])
-            for sub in entry.values():
-                if isinstance(sub, dict):
-                    group = sub.get(GROUP_BY)
-                    if group is not None:
-                        break
-        if not group:
+        # ✅ Use extract_values so dot-notation works for GROUP_BY too
+        group_list = extract_values(entry, GROUP_BY)
+        if not group_list:
             continue
-        for v in extract_values(entry, FIELD):
-            group_value[str(group)][v] += 1
+        for group in group_list:
+            for v in extract_values(entry, FIELD):
+                group_value[str(group)][v] += 1
 
     groups = sorted(group_value.keys())
     total_counts: Counter = Counter()
@@ -170,12 +165,13 @@ ax.set_title(
     + (f"  ·  by {GROUP_BY.replace('_', ' ').title()}" if GROUP_BY else "  ·  all years"),
     fontsize=14, fontweight="bold"
 )
-ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+if GROUP_BY:
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 ax.grid(axis="x" if not GROUP_BY else "y", linestyle="--", alpha=0.4)
 
 plt.tight_layout()
-# plt.savefig(OUTPUT_FILE, dpi=150, bbox_inches="tight")
+plt.savefig(OUTPUT_FILE, dpi=150, bbox_inches="tight")
 plt.show()
 print(f"Saved to {OUTPUT_FILE}")

@@ -4,17 +4,15 @@ from ftfy import fix_text
 
 METRIC_ALIASES = {
     "SSIM": [
-        "SSIM",
         "Structural Similarity Index Measure",
         "Structural Similarity Index",
         "Structural Similarity",
         "QSSIM",
         "Structural Similarity-Based Metric (SSIM)",
-        "Structure Similarity Index Measure (SSIM)"
+        "Structure Similarity Index Measure (SSIM)",
     ],
 
     "MS-SSIM": [
-        "MS-SSIM",
         "MS_SSIM",
         "Multi-Scale Structural Similarity",
         "Multi-Scale Structural Similarity Index",
@@ -22,7 +20,6 @@ METRIC_ALIASES = {
     ],
 
     "VIF": [
-        "VIF",
         "Visual Information Fidelity",
         "Visual Fidelity",
         "VIFP",
@@ -31,12 +28,10 @@ METRIC_ALIASES = {
     ],
 
     "VIFF": [
-        "VIFF",
         "Visual Information Fidelity for Fusion",
     ],
 
     "MI": [
-        "MI",
         "Mutual Information",
         "QMI",
         "Q_MI",
@@ -44,52 +39,45 @@ METRIC_ALIASES = {
     ],
 
     "EN": [
-        "EN",
         "Entropy",
         "Information Entropy",
         "IE",
-        "H",
         "Q_EN",
-        "Entropy Metric (EN)"
+        "Entropy Metric (EN)",
+        # 'H' is too short/ambiguous — handle via keyword only if needed
     ],
 
     "SD": [
-        "SD",
         "Standard Deviation",
         "STD",
         "Q_SD",
     ],
 
     "SF": [
-        "SF",
         "Spatial Frequency",
         "Q_SF",
     ],
 
     "AG": [
-        "AG",
         "Average Gradient",
         "AVG",
     ],
 
     "PSNR": [
-        "PSNR",
         "Peak Signal-to-Noise Ratio",
     ],
 
     "SCD": [
-        "SCD",
         "Sum of Correlation Differences",
         "structural content difference",
         "structural content dissimilarity",
         "Q_SCD",
         "Sum of Correlations of Differences (SCD)",
         "Sum of Correlation of Differences (SCD)",
-        "Sum of the Correlations of Differences (SCD)"
+        "Sum of the Correlations of Differences (SCD)",
     ],
 
     "QAB/F": [
-        "QAB/F",
         "Qabf",
         "Qab/f",
         "Q_AB/F",
@@ -103,135 +91,60 @@ METRIC_ALIASES = {
         "gradient-based similarity measurement (Qabf)",
         "quality of fusion Qabf",
         "Edge Preservation Values (QAB/F)",
-        "HVSQAB/F"
+        "HVSQAB/F",
+        "Gradient-Based Fusion Performance",
     ],
 
     "NAB/F": [
-        "NAB/F",
-        "Nabf"
+        "Nabf",
     ],
 
     "IoU": [
-        "IoU",
         "Intersection over Union",
         "intersection-over-union",
     ],
 
     "mIoU": [
-        "mIoU",
         "mean Intersection over Union",
         "Mean Intersection-over-Union",
+        "Mean Intersection over Union",
     ],
 
     "AP": [
-        "AP",
         "Average Precision",
     ],
 
     "mAP": [
-        "mAP",
         "mean average precision",
         "mAP50",
         "mAP@0.5",
         "mAP@.5",
-        "mAP@0.5:0.95",
     ],
 
     "RMSE": [
-        "RMSE",
         "Root Mean Square Error",
     ],
 
     "MSE": [
-        "MSE",
         "Mean Squared Error",
     ],
 
     "MAE": [
-        "MAE",
         "Mean Absolute Error",
     ],
-    
+
     "CC": [
-        "CC",
         "Correlation Coefficient",
         "Correlation Coefficient (CC)",
         "CORR",
         "Pearson Correlation Coefficient",
     ],
-    
+
     "NCC": [
-        "NCC",
         "normalized cross-correlation",
     ],
 
-    "Precision": [
-        "Precision",
-        "precision",
-        "PPV",
-        "mean Precision",
-        "mPrecision",
-    ],
-
-    "Recall": [
-        "Recall",
-        "recall",
-        "Sensitivity",
-        "sensitivity",
-        "SEN",
-        "mean Recall",
-        "mRecall",
-    ],
-
-    "Specificity": [
-        "Specificity",
-        "specificity",
-    ],
-
-    "Accuracy": [
-        "Accuracy",
-        "accuracy",
-        "overall accuracy",
-    ],
-
-    "Balanced Accuracy": [
-        "Balanced Accuracy",
-        "balanced accuracy",
-    ],
-
-    "Pixel Accuracy": [
-        "Pixel Accuracy",
-        "PA",
-        "mean Pixel Accuracy",
-        "Mean Pixel Accuracy",
-        "mPA",
-        "mAcc",
-    ],
-
-    "F1-score": [
-        "F1-score",
-        "F1 score",
-    ],
-
-    "MCC": [
-        "MCC",
-        "Matthews Correlation Coefficient",
-        "Matthews Correlation Coefficient (MCC)",
-        "Matthews correlation coefficient",
-        "Mathews correlation coefficient",
-    ],
-
-    "AUC": [
-        "AUC",
-        "AUC-ROC",
-        "Area Under the Curve",
-        "Area Under the Curve (AUC)",
-        "Area Under the ROC Curve",
-        "Area Under the ROC Curve (AUC)",
-    ],
-
     "QCV": [
-        "QCV",
         "Qcv",
         "Q_CV",
         "Chen–Varshney metric",
@@ -240,65 +153,55 @@ METRIC_ALIASES = {
     ],
 
     "QCB": [
-        "QCB",
         "Qcb",
         "Q_CB",
         "Chen-Blum Metric",
     ],
 
     "QG": [
-        "QG",
         "Q_G",
         "Gradient-Based Metric",
         "gradient-based metric",
     ],
 
     "QS": [
-        "QS",
         "Qs",
         "Q_S",
         "Piella's Metric",
     ],
 
     "QP": [
-        "QP",
         "Qp",
         "Phase Congruency Metric",
         "image feature-based metric using phase consistency",
     ],
 
     "QM": [
-        "QM",
         "Q_M",
         "Multiscale Scheme Metric",
     ],
 
     "QY": [
-        "QY",
         "Qy",
         "Improved Structural Similarity Index",
         "improved structural similarity index",
     ],
 
     "QNCIE": [
-        "QNCIE",
         "NCIE",
         "nonlinear correlation information entropy",
         "Non-linear Correlation Information",
     ],
 
     "QNICE": [
-        "QNICE",
         "Non-linear Correlation Metric",
     ],
 
     "FSIM": [
-        "FSIM",
         "Feature Similarity Index",
     ],
 
     "FMI": [
-        "FMI",
         "Feature Mutual Information",
         "FMI_pixel",
         "FMI_dct",
@@ -306,38 +209,25 @@ METRIC_ALIASES = {
     ],
 
     "EI": [
-        "EI",
         "Edge Intensity",
         "edge intensity",
     ],
 
-    "IFC": [
-        "IFC",
-    ],
-
     "NMI": [
-        "NMI",
         "Normalized Mutual Information",
         "normalized mutual information",
         "Normalized Mutual Metric",
     ],
 
-    "MAPE": [
-        "MAPE",
-    ],
-
     "NME": [
-        "NME",
         "Normalized Mean Error",
     ],
 
     "NMB": [
-        "NMB",
         "Normalized Mean Bias",
     ],
 
     "R2": [
-        "R2",
         "Coefficient of Determination",
         "Coefficient of determination R",
         "R-squared",
@@ -345,13 +235,11 @@ METRIC_ALIASES = {
     ],
 
     "Kappa": [
-        "Kappa",
         "Cohen's Kappa",
-        "Cohen’s Kappa",
+        "Cohen\u2019s Kappa",
     ],
 
     "Dice": [
-        "Dice",
         "Dice coefficient",
         "Dice score",
         "Dice Similarity Coefficient",
@@ -361,262 +249,215 @@ METRIC_ALIASES = {
         "mDice",
     ],
 
-    "clDice": [
-        "clDice",
-    ],
-
     "HD95": [
-        "HD95",
         "95% Hausdorff distance",
     ],
 
-    "LPIPS": [
-        "LPIPS",
-    ],
-
-    "DISTS": [
-        "DISTS",
-    ],
+    "LPIPS": [],
 
     "FID": [
-        "FID",
         "Fréchet Inception Distance",
     ],
 
     "NIQE": [
-        "NIQE",
         "natural image quality evaluator",
     ],
 
     "MEF-SSIM": [
-        "MEF-SSIM",
         "multi-exposure fusion structural similarity index",
-    ],
-
-    "SAM": [
-        "SAM",
-    ],
-
-    "ERGAS": [
-        "ERGAS",
-    ],
-
-    "SCC": [
-        "SCC",
-    ],
-
-    "QNR": [
-        "QNR",
-    ],
-
-    "EPE": [
-        "EPE",
-    ],
-
-    "TRE": [
-        "TRE",
-    ],
-
-    "Da": [
-        "Da",
-    ],
-
-    "Ds": [
-        "Ds",
     ],
 
     "AP@0.5": [
         "AP50",
         "AP@.5",
-        "AP@0.5",
     ],
 
-    "AP@0.7": [
-        "AP@0.7",
-    ],
-
-    "AP@0.9": [
-        "AP@0.9",
-    ],
-
-    "mAP@0.75": [
-        "mAP@0.75",
-    ],
-
-    "mAP50-95": [
+    "mAP@0.5:0.95": [
         "mAP50-95",
-        "mAP@0.5:0.95",
-    ],
-
-    "Boundary IoU": [
-        "Boundary IoU",
-    ],
-
-    "Cosine Similarity": [
-        "Cosine Similarity",
     ],
 
     "EPI": [
-        "EPI",
         "edge preservation index",
     ],
 
     "QTE": [
-        "QTE",
         "Tsallis Entropy",
         "Tsallis entropy",
     ],
 
-    "RL": [
-        "RL",
-        "Ranking Loss",
-        "ranking loss",
-    ],
-
-    "COV": [
-        "Coverage",
-        "coverage",
-        "COV",
-    ],
-
-    "NPV": [
-        "NPV",
-    ],
-
-    "OR": [
-        "Odds Ratio",
-        "OR",
-    ],
-
-    "CI": [
-        "95% Confidence Interval",
-        "CI",
-    ],
-
-    "P-value": [
-        "P-value",
-        "p-values",
-    ],
-
-    "F-statistic": [
-        "F-statistic",
-    ],
-
-    "Latency": [
-        "Latency",
-        "execution latency",
-    ],
-
-    "FLOPs": [
-        "FLOPs",
-        "floating-point operations",
-    ],
-
-    "Params": [
-        "Params",
-        "model parameters",
-    ],
-
-    "FPS": [
-        "FPS",
-    ],
-
-    "Time": [
-        "Time",
-        "Time (ms)",
-    ],
-
     "LMI": [
         "localized mutual information",
-        "LMI",
     ],
-    
+
     "Avg.Rank": [
-        "Avg.Rank",
         "Average ranking",
     ],
-    
+
     "Mortality": [
-        "Mortality",
-        "Mortality rate"
+        "Mortality rate",
     ],
-    
+
     "TDH": [
         "TDH [%]",
-        "TDh [%]"
-    ]
+        "TDh [%]",
+    ],
+
+    "mPA": [
+        "Mean Pixel Accuracy",
+        "mean pixel accuracy",
+    ],
+
+    "mPrecision": [
+        "Mean Precision",
+        "mean precision",
+    ],
 }
+
 # ---------------------------------------------------
-# Build reverse lookup table
+# Keyword-based labels
+# Used when no alias dict match is found.
+# Keys are lowercase normalised tokens; values are canonicals.
+# Only entries where the keyword differs from the normalised
+# canonical are kept — same-token pairs are no-ops.
 # ---------------------------------------------------
 
-def normalize_text(text):
+KEYWORD_LABELS: dict[str, str] = {
+    "ssim":         "SSIM",
+    "msssim":       "MS-SSIM",
+    "psnr":         "PSNR",
+    "viff":         "VIFF",
+    "vif":          "VIF",
+    "fsim":         "FSIM",
+    "lpips":        "LPIPS",
+    "dists":        "DISTS",
+    "niqe":         "NIQE",
+    "fid":          "FID",
+    "mefssim":      "MEF-SSIM",
+    "qabf":         "QAB/F",
+    "nabf":         "NAB/F",
+    "miou":         "mIoU",
+    "map":          "mAP",
+    "rmse":         "RMSE",
+    "ergas":        "ERGAS",
+    "hdist":        "HD95",
+    "hd95":         "HD95",
+    "dice":         "Dice",
+    "cldice":       "clDice",
+    "kappa":        "Kappa",
+    "lpips":        "LPIPS",
+    "flops":        "FLOPs",
+    "params":       "Params",
+    "latency":      "Latency",
+    "mortality":    "Mortality",
+}
+
+# ---------------------------------------------------
+# Build reverse lookup from alias dict
+# Canonical names themselves are intentionally excluded —
+# they resolve via keyword or pass-through.
+# ---------------------------------------------------
+
+def normalize_text(text: str) -> str:
+    """Aggressive normalisation: lowercase, strip special chars and spaces."""
     text = fix_text(text)
-
     text = text.lower()
-
-    # remove (...) acronym parts
-    text = re.sub(r"\([^)]*\)", "", text)
-
-    # remove separators
-    text = re.sub(r"[_\-/–^]", "", text)
-
-    # remove punctuation
-    text = re.sub(r"[^\w\s]", "", text)
-
-    # remove spaces
-    text = re.sub(r"\s+", "", text)
-
+    text = re.sub(r"\([^)]*\)", "", text)    # drop (...) parentheticals
+    text = re.sub(r"[_\-/–^@:.]", "", text) # remove separators + special metric chars
+    text = re.sub(r"[^\w\s]", "", text)      # remove remaining punctuation
+    text = re.sub(r"\s+", "", text)          # collapse whitespace
     return text.strip()
 
 
-LOOKUP = {}
+LOOKUP: dict[str, str] = {}
 
 for canonical, aliases in METRIC_ALIASES.items():
+    norm_canonical = normalize_text(canonical)
     for alias in aliases:
-        LOOKUP[normalize_text(alias)] = canonical
+        key = normalize_text(alias)
+        # Skip aliases that normalise identically to the canonical — those
+        # are handled by keyword fallback or direct pass-through.
+        if key != norm_canonical:
+            LOOKUP[key] = canonical
 
 
 # ---------------------------------------------------
-# Normalize one metric
+# Normalise a single metric name
+# Priority:  1. alias dict  →  2. keyword scan  →  3. original
 # ---------------------------------------------------
 
-def normalize_metric(metric_name):
+def normalize_metric(metric_name: str) -> str:
     normalized = normalize_text(metric_name)
 
-    return LOOKUP.get(normalized, metric_name)
+    # 1. Exact alias-dict match
+    if normalized in LOOKUP:
+        return LOOKUP[normalized]
+
+    # 2. Keyword scan — find any keyword that appears as a substring
+    for keyword, canonical in KEYWORD_LABELS.items():
+        if keyword in normalized:
+            return canonical
+
+    # 3. Pass-through (return original, preserving casing)
+    return metric_name
 
 
 # ---------------------------------------------------
-# Fix metrics inside your JSON
+# Fix metrics inside a single paper dict
+# New structure: paper["experiment_setup"]["evaluation_metrics"]
+# is a list of {"canonical_name": ..., "raw_name": ...}
 # ---------------------------------------------------
 
-def fix_metrics(data):
-    metrics = data["metadata"]["evaluation_metrics"]
+def fix_metrics(data: dict) -> dict:
+    experiment_setup = data.get("experiment_setup", {})
+    metrics: list[dict] = experiment_setup.get("evaluation_metrics", [])
 
-    fixed_metrics = []
+    seen: list[str] = []
+    fixed: list[dict] = []
 
-    for metric in metrics:
-        fixed = normalize_metric(metric)
+    for entry in metrics:
+        # Prefer raw_name for matching (more descriptive); fall back to canonical_name
+        raw: str    = entry.get("raw_name", "")
+        canonical_input: str = entry.get("canonical_name", "")
 
-        if fixed not in fixed_metrics:
-            fixed_metrics.append(fixed)
+        resolved = normalize_metric(raw) if raw else normalize_metric(canonical_input)
 
-    data["metadata"]["evaluation_metrics"] = fixed_metrics
+        # Deduplicate by resolved name
+        if resolved not in seen:
+            seen.append(resolved)
+            fixed.append({
+                **entry,
+                "canonical_name": resolved,
+            })
 
+    data["experiment_setup"]["evaluation_metrics"] = fixed
     return data
 
-def fix_all_metrics_in_json(json_data):
-    for entry in json_data:
-        fix_metrics(entry)
-    return json_data
 
 # ---------------------------------------------------
-# Example
+# Fix all papers in a JSON list
 # ---------------------------------------------------
+
+def fix_all_metrics(json_data: list[dict]) -> list[dict]:
+    return [fix_metrics(entry) for entry in json_data]
+
+
+# ---------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------
+
 if __name__ == "__main__":
-    with open("data/research_paper/extracted_info/all_papers_structured_raw.json", "r", encoding="utf-8") as f:
+    INPUT_PATH  = "all_papers_structured.json"
+    OUTPUT_PATH = "all_papers_structured.json"
+
+    with open(INPUT_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
-    fixed_data = fix_all_metrics_in_json(data)
-    with open("data/research_paper/extracted_info/all_papers_structured.json", "w", encoding="utf-8") as f:
-        json.dump(fixed_data, f)
+
+    if isinstance(data, list):
+        fixed = fix_all_metrics(data)
+    else:
+        fixed = fix_metrics(data)
+
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(fixed, f, ensure_ascii=False, indent=2)
+
+    print(f"Done. Written to {OUTPUT_PATH}")

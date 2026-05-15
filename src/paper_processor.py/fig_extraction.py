@@ -5,7 +5,7 @@ import re
 
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
-JSON_PATH   = "data/research_paper/extracted_info/all_papers_structured_raw_v2.json"   # path to your JSON file
+JSON_PATH   = "data/research_paper/extracted_info/all_papers_structured_raw_v3.json"   # path to your JSON file
 PDF_DIR     = "data/research_paper/papers"  # folder containing PDFs
 OUTPUT_ROOT = "data/research_paper/figures"              # root output folder
 DPI         = 200
@@ -26,7 +26,7 @@ def find_figure_page_and_y(pdf_path, fig_number):
             # --- Search in raw text first (for page detection) ---
             text = page.extract_text(x_tolerance=3, y_tolerance=3, layout=True)
             lines_raw = text.splitlines()
-            print(lines_raw)
+            # print(lines_raw)
             if not any(line.lstrip().startswith(t) for t in targets for line in lines_raw):
                 continue  # not found on this page
             
@@ -105,9 +105,8 @@ def process_papers(json_path, pdf_dir, output_root, dpi=200, look_up=0.55, look_
 
     for paper in papers:
         stem        = paper.get("stem", "")
-        metadata    = paper.get("metadata", {})
-        title       = metadata.get("title", stem)
-        fig_numbers = metadata.get("method_diagram_fig", [])
+        title       = paper.get("title", stem)
+        fig_numbers = paper.get("method_diagram_fig", [])
 
         if not stem:
             print(f"[SKIP] Missing stem, skipping entry.")
@@ -178,20 +177,20 @@ def process_papers(json_path, pdf_dir, output_root, dpi=200, look_up=0.55, look_
 
 
 if __name__ == "__main__":
-    paper_path = "data/research_paper/papers/A-nested-self-supervised-learning-framework-for-3-D-_2025_Biomedical-Signal-.pdf"
+    # paper_path = "data/research_paper/papers/A-nested-self-supervised-learning-framework-for-3-D-_2025_Biomedical-Signal-.pdf"
     
-    extract_figure(
-        paper_path,
-        fig_number=4,
-        output_dir=OUTPUT_ROOT + '/' + paper_path.split("/")[-1].replace(".pdf", ""),
-        dpi=200
-    )
-    
-    # process_papers(
-    #     json_path   = JSON_PATH,
-    #     pdf_dir     = PDF_DIR,
-    #     output_root = OUTPUT_ROOT,
-    #     dpi         = DPI,
-    #     look_up     = LOOK_UP,
-    #     look_down   = LOOK_DOWN,
+    # extract_figure(
+    #     paper_path,
+    #     fig_number=4,
+    #     output_dir=OUTPUT_ROOT + '/' + paper_path.split("/")[-1].replace(".pdf", ""),
+    #     dpi=200
     # )
+    
+    process_papers(
+        json_path   = JSON_PATH,
+        pdf_dir     = PDF_DIR,
+        output_root = OUTPUT_ROOT,
+        dpi         = DPI,
+        look_up     = LOOK_UP,
+        look_down   = LOOK_DOWN,
+    )

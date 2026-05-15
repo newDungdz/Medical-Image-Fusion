@@ -1,24 +1,24 @@
 import os
 import json
-from urllib import response
-from google import genai
-import dotenv
-from ultis import list_files
-import random, time
+import time
+import multiprocessing as mp
 from pathlib import Path
-import subprocess
+
+import dotenv
+from google import genai
+
+from ultis import list_files
 
 dotenv.load_dotenv()
 
-root_folder = "data/research_paper/papers"
-output_folder = "data/research_paper/extracted_info"
+# ── Config ────────────────────────────────────────────────────────────────────
+ROOT_FOLDER   = "data/research_paper/fusion_papers"
+OUTPUT_FOLDER = "data/research_paper/extracted_info"
 
 MODEL_LIST = ["gemini-2.5-flash", "gemini-3-flash-preview"]
 
-MODEL_INDEX = 0
-API_KEY_INDEX = 1
+GOOGLE_API_KEY_LIST: list[str] = os.getenv("GOOGLE_API_KEY_LIST", "").split(" , ")
 
-GOOGLE_API_KEY_LIST = os.getenv("GOOGLE_API_KEY_LIST").split(" , ")
 
 SCHEMA = {
     "type": "object",
@@ -28,92 +28,76 @@ SCHEMA = {
         "paper_link": {
             "type": "string",
             "format": "uri",
-            "description": "URL to the paper, example: https://arxiv.org/abs/2305.12345, https://doi.org/10.1016/j.sigpro.2025.110073. Write '' if not available."
+            "description": (
+                "URL to the paper, example: https://arxiv.org/abs/2305.12345, "
+                "https://doi.org/10.1016/j.sigpro.2025.110073. Write '' if not available."
+            ),
         },
         "github_link": {
             "type": "string",
             "format": "uri",
-            "description": "URL to the model GitHub repository, example: https://github.com/ImZhangyYing/NLSF. Write '' if not available."
+            "description": "URL to the model GitHub repository. Write '' if not available.",
         },
         "fusion_modalities": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "The image modalities pairs that the paper focuses on fusing e.g., Visible-Infrared, CT-MRI, PET-MRI, etc. If not image fusion paper, leave None."
+            "description": (
+                "The image modalities pairs that the paper focuses on fusing "
+                "e.g., Visible-Infrared, CT-MRI, PET-MRI. If not image fusion paper, leave None."
+            ),
         },
         "method_diagram_fig": {
             "type": "array",
             "items": {"type": "integer"},
-            "description": "The figures number in the paper that show contains the method workflow and pipeline."
+            "description": "Figure numbers in the paper that show the method workflow and pipeline.",
         },
         "proposed_method_detail": {
             "type": "object",
             "properties": {
                 "method_name": {"type": "string"},
-
                 "model_family": {
                     "type": "string",
                     "enum": [
                         "Traditional non-DL", "CNN", "U-Net", "Transformer",
                         "AutoEncoder", "GAN", "Diffusion", "Mamba", "VLM",
                     ],
-                    "description": (
-                        "Primary model family used in the paper method"
-                        "The paper should explicitly mention usage of the model to be include here"
-                    )
+                    "description": "Primary model family used in the paper method.",
                 },
                 "architecture_backbone": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "Backbone architecture or module that the papers use for implementing their methods. "
-                        "Only include unique, paper-specific, or novel modules proposed or distinctly used in the paper. "
-                        "Exclude any general architectural patterns such as Encoder, Decoder, CNN, Transformer, UNet, etc."
-                    )
+                        "Backbone architecture or novel modules proposed in the paper. "
+                        "Exclude generic patterns like Encoder, Decoder, CNN, Transformer, UNet."
+                    ),
                 },
                 "image_transform_model": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "canonical_name": {
-                                "type": "string",
-                                "description": "Standardized name, e.g., e.g., NSST, DWT, PCNN, Guide Filter."
-                            },
-                            "raw_name": {
-                                "type": "string",
-                                "description": "The full name as written in the paper, e.g., 'Non-subsampled Contourlet Transform', 'Discrete Wavelet Transform', 'Pulse Coupled Neural Network', 'Guided Image Filtering'."
-                            }
-                        }
+                            "canonical_name": {"type": "string"},
+                            "raw_name": {"type": "string"},
+                        },
                     },
-                    "description": "Traditional image transform methods used"
+                    "description": "Traditional image transform methods used.",
                 },
                 "contributions": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "improvement": {
-                                "type": "string",
-                                "description": "The specific aspect that the paper claims to improve compared to existing methods, e.g., better performance, faster speed, fewer parameters, etc."
-                            },
-                            "implementation_detail": {
-                                "type": "string",
-                                "description": "Detail on how the proposed method achieves the improvement."
-                            },
-                            "improve_from": {
-                                "type": "string",
-                                "description": "The specific method or model that the paper compares against to demonstrate the improvement."
-                            }
-                        }
+                            "improvement": {"type": "string"},
+                            "implementation_detail": {"type": "string"},
+                            "improve_from": {"type": "string"},
+                        },
                     },
                 },
                 "limitations": {
                     "type": "array",
-                    "items": {
-                        "type": "string",
-                    },
-                    "description": "Any limitations of the proposed method that the paper mentions, if not mentioned, write []."
-                }
+                    "items": {"type": "string"},
+                    "description": "Limitations mentioned by the paper; [] if none.",
+                },
             },
         },
         "experiment_setup": {
@@ -124,36 +108,21 @@ SCHEMA = {
                     "items": {
                         "type": "object",
                         "properties": {
-                            "datasets_name": {
-                                "type": "string",
-                                "description": "The name of the dataset, e.g., 'RoadScene', 'TNO Image Fusion Dataset', 'Harvard Medical Image Dataset'. "
-                            },
-                            "details": {
-                                "type": "string",
-                                "description": "Detailed description of the dataset, including size, splits, and characteristics."
-                            }
-                        }
-                    }
+                            "datasets_name": {"type": "string"},
+                            "details": {"type": "string"},
+                        },
+                    },
                 },
-                "training_details": {
-                    "type": "string",
-                    "description": "Detailed description of the training setup, including data splits, hyperparameters, and any special training techniques specified by the paper, if not specified, write None."
-                },
+                "training_details": {"type": "string"},
                 "evaluation_metrics": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "canonical_name": {
-                                "type": "string",
-                                "description": "Standardized metric name, e.g.,EN, Qabf, PSNR, SSIM, Dice, IoU. Usually used in ablation experiments results table"
-                            },
-                            "raw_name": {
-                                "type": "string",
-                                "description": "The full metric name as written in the paper, e.g.,'Entropy', 'Edge-Based ', 'Peak Signal-to-Noise Ratio', 'Dice Coefficient', 'Mean Intersection over Union (mIoU)'. This is for reference and debugging purposes to understand what the model's canonical_name corresponds to in the paper."
-                            }
-                        }
-                    }
+                            "canonical_name": {"type": "string"},
+                            "raw_name": {"type": "string"},
+                        },
+                    },
                 },
                 "compared_methods": {
                     "type": "array",
@@ -161,58 +130,37 @@ SCHEMA = {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "cite_number": {
-                                "type": "integer",
-                                "description": "the reference number of the cited paper that introduces this method, e.g., [1]."
-                            }
-                        }
+                            "cite_number": {"type": "integer"},
+                        },
                     },
-                    "description": "List of every methods name that the paper compares against in experiments. The methods should be referenced from a cited paper."
                 },
-            }
-        }
-    }
+            },
+        },
+    },
 }
 
-def rotate_to_next(key_idx: int, model_idx: int) -> tuple[int, int]:
-    
-    """
-    Advance one step through the key-first, then model rotation order.
-    Priority: exhaust all keys on current model, then advance model.
-    Returns (new_key_idx, new_model_idx).
-    """
-    next_key = (key_idx + 1) % len(GOOGLE_API_KEY_LIST)
-    if next_key != 0:
-        # Still have more keys for the current model
-        return next_key, model_idx
-    else:
-        # Wrapped around all keys — advance model
-        next_model = (model_idx + 1) % len(MODEL_LIST)
-        return 0, next_model
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def is_quota_exhausted(e: Exception) -> bool:
+    """True for 429 / quota-exceeded — key is burned, must rotate away."""
+    s = str(e).lower()
+    return "429" in s or "resource_exhausted" in s or "quota" in s
 
 
-def read_paper_with_gemini(paper_path, key_idx: int, model_idx: int):
-    """
-    Try to process *paper_path* starting from the given key/model indices.
-    On failure, rotates key-first then model, up to max_rotations attempts.
-    Returns (parsed_response, final_key_idx, final_model_idx).
-    """
-    max_rotations = len(GOOGLE_API_KEY_LIST) * len(MODEL_LIST)
-    current_key_idx = key_idx
-    current_model_idx = model_idx
+def is_transient_error(e: Exception) -> bool:
+    """True for 503 / server overload — retry / rotate but key stays valid."""
+    s = str(e).lower()
+    return "503" in s or "service_unavailable" in s or "overloaded" in s
 
-    for attempt in range(1, max_rotations + 2):
-        current_model = MODEL_LIST[current_model_idx]
-        current_key = GOOGLE_API_KEY_LIST[current_key_idx]
 
-        client = genai.Client(api_key=current_key)
-        file = client.files.upload(file=paper_path)
-        print(
-            f"  Attempt {attempt}: model={current_model}, key_idx={current_key_idx}"
-        )
-        # try: 
+def call_gemini(pdf_path: str, api_key: str, model: str) -> dict:
+    """Single blocking call to the Gemini API. Raises on any error."""
+    client = genai.Client(api_key=api_key)
+    file = client.files.upload(file=pdf_path)
+    try:
         response = client.models.generate_content(
-            model=current_model,
+            model=model,
             contents=[
                 {
                     "role": "user",
@@ -233,97 +181,261 @@ def read_paper_with_gemini(paper_path, key_idx: int, model_idx: int):
                 "temperature": 0.2,
             },
         )
-        client.files.delete(name=file.name)
-        return response.parsed, current_key_idx, current_model_idx
-        # except Exception as e:
-        #     print(f"  ✗ Attempt {attempt} failed (model={current_model}, key_idx={current_key_idx}): {e}")
-
-        #     if attempt > max_rotations:
-        #         raise RuntimeError(
-        #             f"Aborted after {max_rotations} rotation attempts. Last error: {e}"
-        #         )
-
-        #     current_key_idx, current_model_idx = rotate_to_next(current_key_idx, current_model_idx)
-        #     print(f"  → Rotating to key_idx={current_key_idx}, model={MODEL_LIST[current_model_idx]}")
-        #     time.sleep(1)
+    finally:
+        try:
+            client.files.delete(name=file.name)
+        except Exception:
+            pass
+    return response.parsed
 
 
-def process_all_papers(
+def append_error_log(log_path: str, stem: str, pdf_path: str, error: Exception) -> None:
+    os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
+    record = {
+        "stem": stem,
+        "path": str(pdf_path),
+        "error_type": type(error).__name__,
+        "error_message": str(error),
+    }
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+class AllKeysExhausted(Exception):
+    """Raised by a worker when every API key has been 429-burned."""
+
+
+# ── Worker ────────────────────────────────────────────────────────────────────
+
+def worker(
+    worker_id: int,
+    pdf_paths: list[str],
+    initial_api_key: str,
+    key_pool: "mp.managers.ListProxy",
+    key_pool_lock: "mp.managers.AcquirerProxy",
+    processed_stems: set[str],
+    output_path: str,
+    error_log_path: str,
+) -> list[dict]:
+    """
+    Process a list of PDFs.
+
+    Key-rotation rules:
+    - 429 (quota exhausted): current key is permanently burned. Steal the next
+      available key from the shared pool. If no keys remain → raise
+      AllKeysExhausted, which terminates the whole pool.
+    - 503 (transient / overload): rotate to the next key for this request, but
+      put the current key BACK so it can be reused later.
+    - Any other error: log and skip the paper immediately (no rotation).
+    """
+    results: list[dict] = []
+    current_key = initial_api_key
+
+    def steal_key(return_current: bool = False) -> str:
+        """
+        Pop the next key from the shared pool.
+        If return_current=True, push current_key back first (503 case).
+        Raises AllKeysExhausted if pool is empty.
+        """
+        with key_pool_lock:
+            if return_current:
+                key_pool.append(current_key)
+            if not key_pool:
+                raise AllKeysExhausted(
+                    f"[W{worker_id}] All API keys are exhausted (429). Terminating."
+                )
+            return key_pool.pop(0)
+
+    total = len(pdf_paths)
+    for i, pdf_path in enumerate(pdf_paths, 1):
+        stem = Path(pdf_path).stem
+        if stem in processed_stems:
+            print(f"[W{worker_id}] [{i}/{total}] Skip (exists): {stem}")
+            continue
+
+        print(f"[W{worker_id}] [{i}/{total}] Processing: {stem}")
+        succeeded = False
+
+        for model in MODEL_LIST:
+            try:
+                paper_data = call_gemini(pdf_path, current_key, model)
+                results.append({"stem": stem, "model": model, **paper_data})
+                print(f"[W{worker_id}]   ✓ Done: {stem} (model={model})")
+
+                os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+                with open(output_path, "w", encoding="utf-8") as f:
+                    json.dump(results, f, indent=2, ensure_ascii=False)
+
+                succeeded = True
+                break
+
+            except AllKeysExhausted:
+                raise  # bubble up immediately to kill the pool
+
+            except Exception as e:
+                if is_quota_exhausted(e):
+                    # 429: burn current key, grab a fresh one — hard fail if none left
+                    print(
+                        f"[W{worker_id}]   ✗ 429 — key ...{current_key[-6:]} burned: {e}"
+                    )
+                    current_key = steal_key(return_current=False)  # raises if pool empty
+                    print(f"[W{worker_id}]   → Switched to key ...{current_key[-6:]}")
+                    time.sleep(1)
+                    # retry same model with new key (don't advance model)
+                    continue
+
+                elif is_transient_error(e):
+                    # 503: key is still valid, just overloaded — rotate temporarily
+                    print(
+                        f"[W{worker_id}]   ✗ 503 — key ...{current_key[-6:]} overloaded, rotating: {e}"
+                    )
+                    current_key = steal_key(return_current=True)  # puts old key back
+                    print(f"[W{worker_id}]   → Switched to key ...{current_key[-6:]} (old key returned to pool)")
+                    time.sleep(2)
+                    continue
+
+                else:
+                    # Non-retryable: log and skip paper
+                    print(f"[W{worker_id}]   ✗ Non-retryable error for '{stem}': {type(e).__name__}: {e}")
+                    append_error_log(error_log_path, stem, pdf_path, e)
+                    succeeded = True  # already logged, don't double-log below
+                    break
+
+        if not succeeded:
+            exc = Exception("Failed after all retries (rate limits / no keys)")
+            append_error_log(error_log_path, stem, pdf_path, exc)
+            print(f"[W{worker_id}]   ✗ Permanently failed: {stem}")
+
+    print(f"[W{worker_id}] Finished. Processed {len(results)} paper(s).")
+    return results
+
+
+# ── Orchestrator ──────────────────────────────────────────────────────────────
+
+def process_all_papers_mp(
     folder: str,
     output_path: str,
     skip_existing: bool = True,
-    max_papers: int = None,
-) -> dict:
-    pdf_files = list_files(folder)[:max_papers] if max_papers else list_files(folder)
+    max_papers: int | None = None,
+) -> list[dict]:
+    pdf_files = list_files(folder)
+    if max_papers:
+        pdf_files = pdf_files[:max_papers]
     print(f"Found {len(pdf_files)} PDF(s) in '{folder}'.")
 
-    all_results: list = []
-
+    # ── Load existing results ─────────────────────────────────────────────────
+    all_results: list[dict] = []
     if skip_existing and os.path.isfile(output_path):
         with open(output_path, "r", encoding="utf-8") as f:
             all_results = json.load(f)
-        print(f"Loaded {len(all_results)} existing result(s) from '{output_path}'.")
+        print(f"Loaded {len(all_results)} existing result(s).")
 
-    # Build a set of already-processed stems for fast lookup
-    processed_stems = {entry["stem"] for entry in all_results} if skip_existing else set()
+    processed_stems: set[str] = {r["stem"] for r in all_results} if skip_existing else set()
 
+    # ── Build log paths ───────────────────────────────────────────────────────
+    base = os.path.splitext(output_path)[0]
+    error_log_path = base + "_errors.jsonl"
 
-    failed: list[str] = []
+    # ── Key assignment ────────────────────────────────────────────────────────
+    keys = [k.strip() for k in GOOGLE_API_KEY_LIST if k.strip()]
+    n_workers = len(keys)
+    if n_workers == 0:
+        raise ValueError("GOOGLE_API_KEY_LIST is empty.")
 
-    # Start from the first key/model; rotate forward for every new paper
-    key_idx = 0
-    model_idx = 0
+    print(f"Spawning {n_workers} worker(s) (one per API key).")
 
-    for idx, pdf_path in enumerate(pdf_files, start=1):
-        stem = Path(pdf_path).stem
-        if skip_existing and stem in processed_stems:
-            print(f"[{idx}/{len(pdf_files)}] Skipping (already processed): {stem}")
-            continue
+    # ── Shared key pool: all keys go in; each worker pops its starting key ────
+    # Workers pop their initial key during setup; the rest stays as the steal pool.
+    manager  = mp.Manager()
+    key_pool = manager.list(keys)   # all keys; workers pop from front
+    key_lock = manager.Lock()
 
-        print(f"[{idx}/{len(pdf_files)}] Processing: {pdf_path}")
-        paper_data, key_idx, model_idx = read_paper_with_gemini(
-            pdf_path, key_idx, model_idx
+    # Pop one key per worker upfront so each starts with a unique key
+    worker_keys: list[str] = []
+    for _ in range(n_workers):
+        worker_keys.append(key_pool.pop(0))
+    # key_pool now holds only the "spare" keys available for stealing
+
+    # ── Partition PDFs across workers (round-robin) ───────────────────────────
+    partitions: list[list[str]] = [[] for _ in range(n_workers)]
+    for idx, path in enumerate(pdf_files):
+        partitions[idx % n_workers].append(path)
+
+    # Per-worker temp output paths
+    tmp_outputs = [f"{base}_worker_{wid}.json" for wid in range(n_workers)]
+
+    # ── Launch workers ────────────────────────────────────────────────────────
+    worker_args = [
+        (
+            wid,
+            partitions[wid],
+            worker_keys[wid],
+            key_pool,
+            key_lock,
+            processed_stems,
+            tmp_outputs[wid],
+            error_log_path,
         )
-        all_results.append({"stem": stem, "model": MODEL_LIST[model_idx], **paper_data})  # include stem so skip-existing works
-        print(f"  ✓ Done: {stem} (key_idx={key_idx}, model={MODEL_LIST[model_idx]})")
+        for wid in range(n_workers)
+    ]
 
-        # Rotate for the next paper regardless of success/failure
-        key_idx, model_idx = rotate_to_next(key_idx, model_idx)
+    worker_results: list[list[dict]] = []
+    try:
+        with mp.Pool(processes=n_workers) as pool:
+            worker_results = pool.starmap(worker, worker_args)
+    except AllKeysExhausted as e:
+        print(f"\n✗ FATAL: {e}")
+        print("All API keys have been 429-exhausted. Saving partial results and exiting.")
+    except KeyboardInterrupt:
+        print("\nInterrupted by user. Saving partial results.")
 
-        # Save after every paper
-        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(all_results, f, indent=2, ensure_ascii=False)
+    # ── Merge whatever results exist (partial or full) ────────────────────────
+    merged: dict[str, dict] = {r["stem"]: r for r in all_results}
+    for batch in worker_results:
+        for record in batch:
+            merged[record["stem"]] = record
+
+    # Also pick up any per-worker temp files written before termination
+    for tmp in tmp_outputs:
+        if os.path.isfile(tmp):
+            try:
+                with open(tmp, "r", encoding="utf-8") as f:
+                    for record in json.load(f):
+                        merged.setdefault(record["stem"], record)
+            except Exception:
+                pass
+
+    final_results = list(merged.values())
+
+    # ── Write merged output ───────────────────────────────────────────────────
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(final_results, f, indent=2, ensure_ascii=False)
+
+    # ── Clean up temp files ───────────────────────────────────────────────────
+    for tmp in tmp_outputs:
+        if os.path.isfile(tmp):
+            os.remove(tmp)
 
     print("\n── Batch complete ──────────────────────────────────────────────")
-    print(f"  Processed : {len(all_results)} paper(s)")
-    print(f"  Failed    : {len(failed)} paper(s)")
-    if failed:
-        print("  Failed files:")
-        for f in failed:
-            print(f"    • {f}")
-    print(f"  Output    : {output_path}")
+    print(f"  Total in output : {len(final_results)}")
+    print(f"  Error log       : {error_log_path}")
+    print(f"  Output          : {output_path}")
+    return final_results
 
-    return all_results
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # # Test on a specific paper
-    # test_path = "data/research_paper/papers/2508.16881v1.pdf"
-    # result, _, _ = read_paper_with_gemini(test_path, key_idx=3, model_idx=0)
-    # with open(output_folder + "/test_info/" + test_path.split('\\')[-1].split('/')[-1].replace(".pdf", "")[:20] + ".json", "w", encoding="utf-8") as f:
-    #     json.dump(result, f, indent=2, ensure_ascii=False)
-    # print("Read paper complete")
+    # Required on Windows / macOS (spawn start method)
+    mp.freeze_support()
 
+    output_json_path = os.path.join(OUTPUT_FOLDER, "all_papers_structured_raw_v3.json")
 
-
-    output_json_path = os.path.join(output_folder, "all_papers_structured_raw_v2.json")
- 
-    results = process_all_papers(
-        folder=root_folder,
+    results = process_all_papers_mp(
+        folder=ROOT_FOLDER,
         output_path=output_json_path,
-        skip_existing=True,    # set False to re-process everything
-        max_papers=None        # set to an integer to limit number of papers processed (for testing)
+        skip_existing=True,
+        max_papers=None,
     )
- 
+
     print(f"\nTotal papers in output: {len(results)}")
